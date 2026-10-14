@@ -10,7 +10,7 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 | Repositorio | https://github.com/fernandomp84/matriz-competenciasv2 | https://github.com/fernandomp84/matriz-competencias |
 | Backend (Render) | https://matriz-competenciasv2.onrender.com | https://matriz-competencias.onrender.com |
 | API Docs | https://matriz-competenciasv2.onrender.com/docs | https://matriz-competencias.onrender.com/docs |
-| Frontend (Vercel) | _pendiente_ | https://matriz-competencias-kappa.vercel.app |
+| Frontend (Vercel) | https://matriz-competenciasv2.vercel.app | https://matriz-competencias-kappa.vercel.app |
 
 ## Despliegue
 
@@ -18,10 +18,13 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 - Build Command: `pip install -r backend/requirements.txt`
 - Start Command: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
 - Root Directory: _(vacío)_
+- Plan: Free (Oregon). Servicio creado sin proyecto (Ungrouped Services).
+- Al crear el servicio Render no lanzó el primer deploy; se lanzó con Manual Deploy.
 
 **Vercel (frontend)**
 - Framework: Vite
 - Root Directory: `frontend`
+- Equipo: Clinica Vitalia (Hobby).
 - La URL del backend se toma de `frontend/.env.production` (`VITE_API_URL`).
 
 ## Nueva estructura de entrada (`Entrada/Omnia.xlsx`)

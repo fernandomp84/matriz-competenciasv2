@@ -153,16 +153,25 @@ def siga_id_a_str(valor) -> str:
 
 
 def id_indicador_a_str(valor) -> str:
-    """'2348', 2348 o 2348.0 → '2348'. Valores no numéricos se devuelven limpios."""
+    """
+    El ID se conserva tal como viene en el Excel, con sus ceros a la izquierda
+    ('00093' → '00093'). Solo las celdas numéricas se normalizan (2348.0 → '2348').
+    """
     if es_vacio_estricto(valor):
         return ""
-    try:
-        num = float(str(valor).strip())
-        if num.is_integer():
-            return str(int(num))
-    except ValueError:
-        pass
-    return limpiar_str(valor)
+    if isinstance(valor, float) and valor.is_integer():
+        return str(int(valor))
+    texto = limpiar_str(valor)
+    # Celda numérica leída como texto: '2348.0' → '2348'
+    return texto[:-2] if re.fullmatch(r"\d+\.0", texto) else texto
+
+
+def leer_hojas(main_bytes: bytes) -> dict[str, pd.DataFrame]:
+    """
+    Lee todas las hojas. 'ID Indicador' se lee como texto: si no, pandas
+    convierte '00093' en 93 y se pierden los ceros a la izquierda.
+    """
+    return pd.read_excel(io.BytesIO(main_bytes), sheet_name=None, dtype={COL_ID_INDICADOR: str})
 
 
 def extraer_rasgos(fila: pd.Series) -> list[str]:
@@ -469,7 +478,7 @@ def construir_registro(fila, df_t2, df_t3, df_t5, mapa_tipo_registro, dept_nombr
 def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xlsx") -> dict:
     t_inicio = time.perf_counter()
 
-    sheets = pd.read_excel(io.BytesIO(main_bytes), sheet_name=None)
+    sheets = leer_hojas(main_bytes)
     hojas, faltantes = resolver_hojas(sheets)
     if faltantes:
         raise ValueError(
@@ -589,7 +598,7 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
 
 def previsualizar(main_bytes: bytes) -> dict:
     """Revisión rápida del archivo antes de procesar: hojas, filas e indicadores en conflicto."""
-    sheets = pd.read_excel(io.BytesIO(main_bytes), sheet_name=None)
+    sheets = leer_hojas(main_bytes)
     hojas, faltantes = resolver_hojas(sheets)
     filas = {nombre: len(quitar_encabezados_repetidos(sheets[nombre])) for nombre in hojas.values()}
     indicadores = 0

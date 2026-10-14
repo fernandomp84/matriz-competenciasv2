@@ -47,7 +47,7 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 3. Hojas requeridas: `T_1`, `T_2`, `T_3`, `T_5` (también se aceptan `T1`…`T5`). Si falta alguna, el proceso se detiene con error.
 
 **JSON (`salida.json`)**
-4. `indicadorDesempeno.codigo` = `ID Indicador` (numérico, como texto).
+4. `indicadorDesempeno.codigo` = `ID Indicador` **tal como viene en el Excel, con sus ceros a la izquierda** (ej. `00093`, `02957`). Se usa igual en el JSON, la rúbrica, la matriz y los errores.
 5. `indicadorDesempeno.tipo` = `"Principal"` y `codigoHomologado` = `"No Aplica"` **fijos** (se conservan para no romper consumidores).
 6. Nuevo campo `indicadorDesempeno.clasificacion` = `Clasificación de Indicador`.
 7. Se quitan `metaCompetencia.codigo` y `resultadoAprendizaje.codigo` (quedan `titulo` y `descripcion`).
@@ -56,7 +56,7 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 10. Ya no existe la clave `tm` en el resultado.
 
 **Matriz (`Matriz_Competencias.csv`)**
-11. Lista plana: una fila por `ID Indicador`, ordenada numéricamente. Sin jerarquía matriz → metacompetencia → RA.
+11. Lista plana: una fila por `ID Indicador` (con sus ceros), ordenada por valor numérico. Sin jerarquía matriz → metacompetencia → RA.
 12. Columnas `ID Indicador` y `Descripción` (texto plano), separadas por `;`, todos los valores entre comillas, UTF-8 con BOM.
 
 **Textos**

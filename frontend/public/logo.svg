@@ -1,0 +1,44 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo de círculo -->
+  <circle cx="100" cy="100" r="95" fill="#ffffff" stroke="#1e40af" stroke-width="2"/>
+
+  <!-- Birrete (Mortarboard) -->
+  <g transform="translate(100, 75)">
+    <!-- Placa superior del birrete -->
+    <rect x="-45" y="-8" width="90" height="12" fill="#1e40af" rx="2"/>
+
+    <!-- Borlas decorativas en las esquinas -->
+    <circle cx="-45" cy="-2" r="4" fill="#3b82f6"/>
+    <circle cx="45" cy="-2" r="4" fill="#3b82f6"/>
+
+    <!-- Tubo central -->
+    <rect x="-3" y="4" width="6" height="20" fill="#1e40af"/>
+
+    <!-- Escudo académico -->
+    <g transform="translate(0, 28)">
+      <!-- Marco del escudo -->
+      <path d="M -35,-8 L 35,-8 L 35,28 Q 0,48 -35,28 Z" fill="#3b82f6" stroke="#1e40af" stroke-width="1.5"/>
+
+      <!-- Libro abierto en el centro -->
+      <g transform="translate(0, 8)">
+        <!-- Lomo del libro -->
+        <rect x="-1" y="-8" width="2" height="16" fill="#1e40af"/>
+
+        <!-- Página izquierda -->
+        <path d="M -12,-8 L -3,-8 L -2,0 L -12,6 Z" fill="#e0e7ff"/>
+
+        <!-- Página derecha -->
+        <path d="M 3,-8 L 12,-8 L 12,6 L 2,0 Z" fill="#e0e7ff"/>
+
+        <!-- Líneas de texto -->
+        <line x1="-10" y1="-4" x2="-5" y2="-4" stroke="#1e40af" stroke-width="0.5"/>
+        <line x1="-10" y1="-1" x2="-5" y2="-1" stroke="#1e40af" stroke-width="0.5"/>
+        <line x1="5" y1="-4" x2="10" y2="-4" stroke="#1e40af" stroke-width="0.5"/>
+        <line x1="5" y1="-1" x2="10" y2="-1" stroke="#1e40af" stroke-width="0.5"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- Círculo decorativo exterior -->
+  <circle cx="100" cy="100" r="95" fill="none" stroke="#dbeafe" stroke-width="1" stroke-dasharray="5,5"/>
+</svg>

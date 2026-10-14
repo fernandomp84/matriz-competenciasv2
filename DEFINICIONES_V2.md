@@ -33,22 +33,45 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 |---|---|
 | Hojas `T1`, `T2`, `T3`, `T5`, `TM` | Hojas `T_1`, `T_2`, `T_3`, `T_4`, `T_5` — **sin `TM`** |
 | `ID Indicador principal` + `ID Indicador equivalente` (códigos `IND###_RA###_M###_MATRIZ`) | `ID Indicador` (numérico, mismo ID para todos los programas) + `ID de Tributación` (vacía) |
-| Rasgos `(AH)`, `(CE)`, `(CG)`, `(CI)` | Rasgos `(H)`, `(E)`, `(G)`, `(C)` |
-| Columna `Hyflex` | Ya no viene (se toma como 0) |
+| Rasgos `(AH)`, `(CE)`, `(CG)`, `(CI)` | Se han entregado con `(H)`, `(E)`, `(G)`, `(C)` y con las siglas originales: **se aceptan ambas** |
+| Columna `Hyflex` | Ya no viene |
+| — | `Clasificación de Indicador` (Acción, Saber, Conexión Global, Actitud Humanizadora, Conexión con el Entorno, Cointeligencia) |
+| — | A veces viene una fila que repite los encabezados: **se ignora** en todas las hojas |
 
-## Definiciones acordadas
+## Definiciones acordadas (2026-10-14)
 
-1. **Mismo ID ⇒ misma descripción y misma rúbrica** en todo el archivo. Las violaciones se deben corregir en el Excel
-   (reporte: 28 IDs al 2026-10-14, ver `Salida/Inconsistencias_ID_Indicador.xlsx` en el proyecto v1).
-2. **JSON:** ya no lleva `metaCompetencia.codigo` ni `resultadoAprendizaje.codigo`.
-3. **Matriz CSV:** solo ID del indicador y su descripción (sin jerarquía matriz → metacompetencia → RA).
-4. **Descripciones:** las letras al inicio (`A:`, `C:`, `H:`) se dejan tal como vienen.
+**Reglas de validación**
+1. **Mismo ID ⇒ misma descripción y misma rúbrica** (Inicial, Progresivo, Avanzado, Excelente) en todo el archivo.
+   Si no se cumple, el indicador **se omite** del JSON y de la matriz y se reporta una vez en el archivo de errores (hoja `T_2`).
+2. **Departamento sin equivalencia** en la Tabla de equivalencias ⇒ el **curso se omite** y se reporta (hoja `T_1`).
+3. Hojas requeridas: `T_1`, `T_2`, `T_3`, `T_5` (también se aceptan `T1`…`T5`). Si falta alguna, el proceso se detiene con error.
 
-## Pendientes por definir
+**JSON (`salida.json`)**
+4. `indicadorDesempeno.codigo` = `ID Indicador` (numérico, como texto).
+5. `indicadorDesempeno.tipo` = `"Principal"` y `codigoHomologado` = `"No Aplica"` **fijos** (se conservan para no romper consumidores).
+6. Nuevo campo `indicadorDesempeno.clasificacion` = `Clasificación de Indicador`.
+7. Se quitan `metaCompetencia.codigo` y `resultadoAprendizaje.codigo` (quedan `titulo` y `descripcion`).
+8. Se quita `horas.Directas.Hyflex`.
+9. `rubricaEvaluacion`: una entrada por `ID Indicador` dentro de cada curso (ya no se filtra por principal/homologado).
+10. Ya no existe la clave `tm` en el resultado.
 
-- [ ] Quitar `tipo` y `codigoHomologado` del JSON (el análisis indica que la rúbrica no se afecta si se deduplica por ID).
-- [ ] Formato exacto del CSV que acepta la plataforma destino: ¿2 columnas o las 5 actuales con `Número ID paterno` vacío?
-- [ ] Qué hacer cuando un ID tiene descripción/rúbrica distinta: ¿reportar error y omitir, o tomar la primera?
+**Matriz (`Matriz_Competencias.csv`)**
+11. Lista plana: una fila por `ID Indicador`, ordenada numéricamente. Sin jerarquía matriz → metacompetencia → RA.
+12. Columnas `ID Indicador` y `Descripción` (texto plano), separadas por `;`, todos los valores entre comillas, UTF-8 con BOM.
+
+**Textos**
+13. Las letras al inicio de las descripciones (`A:`, `C:`, `G:`, `H:`) se dejan tal como vienen.
+
+## Resultado con `Omnia.xlsx` del 2026-10-14 (12:55)
+
+- 704 cursos en `T_1` → 700 procesados, 4 omitidos (departamento "Educación y Desarrollo Infantil").
+- 939 IDs de indicador → 28 omitidos por conflicto → **896 filas** en la matriz.
+
+## Pendientes (dependen de terceros)
+
 - [ ] Código del departamento "Educación y Desarrollo Infantil" en la Tabla de equivalencias.
+- [ ] Corregir en el Omnia los 28 IDs con descripción/rúbrica distinta.
 - [ ] Confirmar si 704 cursos es la entrega completa (antes eran 1.613).
-- [ ] ¿Se mantiene `Hyflex` en el JSON (siempre 0) o se quita?
+- [ ] Confirmar que la plataforma destino acepta el CSV de 2 columnas.
+
+> Nota: `procesar_megamatriz.py` y `generar_matriz_competencias.py` en la raíz son los scripts originales de la v1 y **no** reflejan estas reglas; la lógica vigente está en `backend/services/`.

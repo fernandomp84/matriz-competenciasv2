@@ -14,10 +14,10 @@ interface Props {
 }
 
 const sheetColors: Record<string, string> = {
-  T1: 'bg-red-50 text-red-700',
-  T2: 'bg-amber-50 text-amber-700',
-  T3: 'bg-orange-50 text-orange-700',
-  T5: 'bg-yellow-50 text-yellow-700',
+  T_1: 'bg-red-50 text-red-700',
+  T_2: 'bg-amber-50 text-amber-700',
+  T_3: 'bg-orange-50 text-orange-700',
+  T_5: 'bg-yellow-50 text-yellow-700',
 }
 
 export default function ErrorTable({ errors, title = 'Errores detectados' }: Props) {

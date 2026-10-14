@@ -50,7 +50,7 @@ export default function Dashboard() {
                 Matriz de Competencias <span className="text-white/60 text-xl font-semibold">v2</span>
               </h1>
               <p className="mt-2 text-white/70 text-sm leading-relaxed max-w-xl">
-                Herramienta de procesamiento para la Megamatriz de Electivas. Genera automáticamente el JSON estructurado y la Matriz de Competencias CSV.
+                Herramienta de procesamiento para la Megamatriz (Omnia.xlsx). Genera automáticamente el JSON estructurado y la Matriz de Competencias CSV.
               </p>
             </div>
             <div className="hidden md:flex flex-col items-end gap-2 shrink-0">
@@ -108,7 +108,7 @@ export default function Dashboard() {
         <div className="card-body">
           <div className="flex items-center gap-3 flex-wrap">
             {[
-              { label: 'Megamatriz.xlsx', sub: 'T1 · T2 · T3 · T5',   bg: 'bg-brand-50',   text: 'text-brand-700' },
+              { label: 'Omnia.xlsx', sub: 'T_1 · T_2 · T_3 · T_5', bg: 'bg-brand-50',   text: 'text-brand-700' },
               { label: 'Equivalencias.xlsx', sub: 'Depts. y tipos',   bg: 'bg-brand-50',   text: 'text-brand-700' },
             ].map((item) => (
               <div key={item.label} className={`px-4 py-3 rounded-xl ${item.bg} ${item.text} text-center border border-brand-100`}>
@@ -205,7 +205,7 @@ export default function Dashboard() {
                     <p className="text-xs text-slate-400 mt-0.5">
                       {item.type === 'megamatriz'
                         ? `${item.stats.procesados} cursos · ${item.stats.totalErrores} errores`
-                        : `${item.stats.totalFilas} filas · ${item.stats.programas} programas`}
+                        : `${item.stats.totalFilas} indicadores`}
                     </p>
                   </div>
                 </div>

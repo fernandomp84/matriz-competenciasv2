@@ -16,10 +16,12 @@ export interface MegamatrizStats {
   procesados: number
   totalErrores: number
   t1Errores: number
+  t2Errores: number
   t3Errores: number
   t5Errores: number
   totalFilasT1: number
-  tmEntradas: number
+  cursosOmitidos: number
+  indicadoresOmitidos: number
   elapsedMs: number
 }
 
@@ -31,25 +33,20 @@ export interface MegamatrizAudit {
 }
 
 export interface MegamatrizResult {
-  resultado: { status: boolean; data: Record<string, unknown>; tm: Record<string, string> }
+  resultado: { status: boolean; data: Record<string, unknown> }
   errores: ProcessingError[]
   stats: MegamatrizStats
   audit: MegamatrizAudit
 }
 
 export interface MatrixRow {
-  'Número ID paterno': string
-  'Número ID': string
-  Nombre_corto: string
+  'ID Indicador': string
   Descripción: string
-  'Formato de descripción': number
 }
 
 export interface MatrixStats {
   totalFilas: number
-  programas: number
   totalErrores: number
-  tmEntradas: number
 }
 
 export interface MatrixResult {
@@ -85,17 +82,24 @@ export async function updateEquivalencias(file: File): Promise<void> {
 
 // ── Processing ─────────────────────────────────────────────────────────────────
 
-export interface TMPreview {
-  hojas: string[]
-  tmEncontrada: boolean
-  tmEntradas: Record<string, string>
-  total: number
+export interface IndicatorConflict {
+  id: string
+  campos: string[]
+  filas: number[]
 }
 
-export async function previewTM(mainFile: File): Promise<TMPreview> {
+export interface FilePreview {
+  hojas: string[]
+  faltantes: string[]
+  filasPorHoja: Record<string, number>
+  indicadores: number
+  conflictos: IndicatorConflict[]
+}
+
+export async function previewFile(mainFile: File): Promise<FilePreview> {
   const form = new FormData()
   form.append('main_file', mainFile)
-  const { data } = await client.post<TMPreview>('/process/preview-tm', form)
+  const { data } = await client.post<FilePreview>('/process/preview', form)
   return data
 }
 

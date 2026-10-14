@@ -1,8 +1,6 @@
-import io
 import json
 import re
 
-import pandas as pd
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from ..services import config_service, matriz_service, megamatriz_service
@@ -10,54 +8,14 @@ from ..services import config_service, matriz_service, megamatriz_service
 router = APIRouter(prefix="/process", tags=["processing"])
 
 
-@router.post("/debug-sabe")
-async def debug_sabe(
-    main_file: UploadFile = File(...),
+@router.post("/preview")
+async def preview(
+    main_file: UploadFile = File(..., description="Archivo Excel Omnia (.xlsx)"),
 ):
-    """Diagnóstico: muestra los valores de programa.codigo para competencias SABE."""
-    try:
-        equiv = config_service.get_equiv_bytes()
-        if not equiv:
-            raise HTTPException(400, "Equivalencias no configuradas")
-        main_bytes = await main_file.read()
-        result = megamatriz_service.procesar(main_bytes, equiv, main_file.filename or "archivo.xlsx")
-        sabe_entries = []
-        for id_siga, curso in result["resultado"]["data"].items():
-            for comp in curso.get("competencias", []):
-                if comp.get("metaCompetencia", {}).get("codigo") == "SABE":
-                    sabe_entries.append({
-                        "idCursoSiga": id_siga,
-                        "nombreCurso": curso.get("nombreCurso", ""),
-                        "programa_codigo": comp.get("programa", {}).get("codigo", ""),
-                        "programa_nombre": comp.get("programa", {}).get("nombre", ""),
-                        "indicador_codigo": comp.get("indicadorDesempeno", {}).get("codigo", ""),
-                    })
-        return {
-            "total_sabe": len(sabe_entries),
-            "muestra": sabe_entries[:10],
-        }
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(500, str(exc)) from exc
-
-
-@router.post("/preview-tm")
-async def preview_tm(
-    main_file: UploadFile = File(..., description="Archivo Excel Megamatriz (.xlsx)"),
-):
-    """Lee solo la hoja TM y devuelve los datos para verificación antes de procesar."""
+    """Revisa hojas, filas e indicadores en conflicto antes de procesar."""
     try:
         main_bytes = await main_file.read()
-        sheets = pd.read_excel(io.BytesIO(main_bytes), sheet_name=None)
-        hojas = list(sheets.keys())
-        mapa_tm = megamatriz_service.leer_tm(sheets)
-        return {
-            "hojas": hojas,
-            "tmEncontrada": "TM" in sheets,
-            "tmEntradas": mapa_tm,
-            "total": len(mapa_tm),
-        }
+        return megamatriz_service.previsualizar(main_bytes)
     except Exception as exc:
         raise HTTPException(500, f"Error al leer el archivo: {exc}") from exc
 
@@ -85,6 +43,8 @@ async def process_megamatriz(
         return megamatriz_service.procesar(main_bytes, equiv_bytes, main_file.filename or "archivo.xlsx")
     except HTTPException:
         raise
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     except Exception as exc:
         raise HTTPException(500, f"Error al procesar el archivo: {exc}") from exc
 
@@ -122,5 +82,7 @@ async def process_full(
         return {"megamatriz": mega_result, "matrix": matrix_result}
     except HTTPException:
         raise
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     except Exception as exc:
         raise HTTPException(500, f"Error al procesar: {exc}") from exc

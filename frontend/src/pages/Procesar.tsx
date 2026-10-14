@@ -11,9 +11,9 @@ import StatsCard from '../components/StatsCard'
 import { useToast } from '../hooks/useToast'
 import {
   checkEquivStatus, downloadBase64File, downloadCSV,
-  downloadErrorsCSV, downloadJSON, previewTM, processMegamatriz,
+  downloadErrorsCSV, downloadJSON, previewFile, processMegamatriz,
   processMatrixFromData, updateEquivalencias,
-  type EquivStatus, type MatrixResult, type MegamatrizResult, type TMPreview,
+  type EquivStatus, type FilePreview, type MatrixResult, type MegamatrizResult,
 } from '../services/api'
 
 type StepState = 'idle' | 'running' | 'done' | 'error'
@@ -103,13 +103,19 @@ function EquivSection({ status, onUpdated }: { status: EquivStatus; onUpdated: (
   )
 }
 
-// ── Vista previa TM ───────────────────────────────────────────────────────────
-function TMPreviewPanel({ preview, onConfirm, onReset }: {
-  preview: TMPreview
+// ── Vista previa del archivo ──────────────────────────────────────────────────
+function listarFilas(filas: number[], max = 6) {
+  const txt = filas.slice(0, max).join(', ')
+  return filas.length > max ? `${txt} y ${filas.length - max} más` : txt
+}
+
+function FilePreviewPanel({ preview, onConfirm, onReset }: {
+  preview: FilePreview
   onConfirm: () => void
   onReset: () => void
 }) {
-  const entries = Object.entries(preview.tmEntradas)
+  const ok = preview.faltantes.length === 0
+  const conflictos = preview.conflictos
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card overflow-hidden">
@@ -120,7 +126,7 @@ function TMPreviewPanel({ preview, onConfirm, onReset }: {
             <Eye className="w-4 h-4 text-brand-700" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">Verificación de hoja TM</p>
+            <p className="text-sm font-semibold text-slate-800">Verificación del archivo</p>
             <p className="text-xs text-slate-400 mt-0.5">
               Pestañas en el Excel: {preview.hojas.join(' · ')}
             </p>
@@ -132,63 +138,59 @@ function TMPreviewPanel({ preview, onConfirm, onReset }: {
         </button>
       </div>
 
-      {/* Estado TM */}
+      {/* Estado de hojas */}
       <div className="px-6 py-4 border-b border-slate-100 space-y-3">
-        {preview.tmEncontrada ? (
+        {ok ? (
           <div className="flex items-center gap-3 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
             <div>
               <p className="text-sm font-semibold text-emerald-800">
-                Hoja TM encontrada — {preview.total} padre{preview.total !== 1 ? 's' : ''} leído{preview.total !== 1 ? 's' : ''}
+                Hojas requeridas encontradas — {preview.indicadores} indicadores distintos
               </p>
               <p className="text-xs text-emerald-600 mt-0.5">
-                Verifica que los datos de abajo sean correctos antes de procesar
+                {Object.entries(preview.filasPorHoja).map(([h, n]) => `${h}: ${n} filas`).join(' · ')}
               </p>
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
-            <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+          <div className="flex items-center gap-3 p-3.5 bg-red-50 border border-red-200 rounded-xl">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-amber-800">Hoja TM no encontrada en el archivo</p>
-              <p className="text-xs text-amber-700 mt-0.5">
-                Se usará el nombre del programa (columna Programa de T1) como fallback.
+              <p className="text-sm font-semibold text-red-800">Faltan hojas: {preview.faltantes.join(', ')}</p>
+              <p className="text-xs text-red-600 mt-0.5">
+                El archivo debe tener las hojas T_1, T_2, T_3 y T_5.
               </p>
             </div>
           </div>
         )}
-        {/* Regla especial SABE */}
-        <div className="flex items-start gap-2.5 p-3 bg-brand-50 border border-brand-100 rounded-xl">
-          <AlertCircle className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-brand-700">
-            <strong>Regla SABE:</strong> Las metacompetencias con código <code className="bg-brand-100 px-1 rounded">SABE</code> usan el campo <strong>Source.Name</strong> de T2 como ID del padre principal (ej. <code className="bg-brand-100 px-1 rounded">SABER_UX</code>), no la hoja TM. Asegúrate de que ese código exista en la columna <strong>Matriz Principal</strong> de TM para que tome el nombre correcto.
-          </p>
-        </div>
+        {ok && conflictos.length > 0 && (
+          <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800">
+              <strong>{conflictos.length} indicador{conflictos.length !== 1 ? 'es' : ''} se omitirá{conflictos.length !== 1 ? 'n' : ''}:</strong> un
+              mismo ID Indicador debe tener la misma descripción y rúbrica en todo el archivo. Corrígelos en la hoja T_2 para incluirlos.
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Tabla de padres */}
-      {entries.length > 0 && (
+      {/* Tabla de conflictos */}
+      {ok && conflictos.length > 0 && (
         <div className="overflow-x-auto max-h-72 overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0">
               <tr style={{ backgroundColor: '#11225a' }}>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-white/80 uppercase tracking-wide w-40">
-                  Matriz Principal (ID padre)
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-white/80 uppercase tracking-wide">
-                  Descripción (Nombre_corto y Descripción en CSV)
-                </th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-white/80 uppercase tracking-wide w-32">ID Indicador</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-white/80 uppercase tracking-wide">Campos que difieren</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-white/80 uppercase tracking-wide">Filas en T_2</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {entries.map(([codigo, desc]) => (
-                <tr key={codigo} className="hover:bg-brand-50/40 transition-colors">
-                  <td className="px-5 py-3 font-mono font-semibold text-brand-700 text-sm whitespace-nowrap">
-                    {codigo}
-                  </td>
-                  <td className="px-5 py-3 text-slate-700 text-sm leading-snug">
-                    {desc}
-                  </td>
+              {conflictos.map((c) => (
+                <tr key={c.id} className="hover:bg-brand-50/40 transition-colors">
+                  <td className="px-5 py-3 font-mono font-semibold text-brand-700 whitespace-nowrap">{c.id}</td>
+                  <td className="px-5 py-3 text-slate-700">{c.campos.join(', ')}</td>
+                  <td className="px-5 py-3 text-slate-500 font-mono text-xs">{listarFilas(c.filas)}</td>
                 </tr>
               ))}
             </tbody>
@@ -199,11 +201,11 @@ function TMPreviewPanel({ preview, onConfirm, onReset }: {
       {/* Acciones */}
       <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
         <p className="text-xs text-slate-500">
-          {entries.length > 0
-            ? '¿Los nombres de los padres son correctos? Confirma para continuar.'
-            : 'Puedes continuar sin TM — se usará el nombre del programa como fallback.'}
+          {!ok ? 'Corrige el archivo y vuelve a cargarlo.'
+            : conflictos.length > 0 ? 'Puedes procesar ahora; los indicadores en conflicto quedarán en el reporte de errores.'
+            : 'Todo listo para procesar.'}
         </p>
-        <button onClick={onConfirm} className="btn-primary">
+        <button onClick={onConfirm} disabled={!ok} className="btn-primary">
           <CheckCircle2 className="w-4 h-4" />
           Confirmar y procesar
         </button>
@@ -224,14 +226,14 @@ function StepIndicator({ steps, megaStats, matrixStats }: {
       label: 'Procesar Megamatriz',
       sub: megaStats
         ? `${megaStats.procesados} cursos · ${megaStats.totalErrores} errores · ${megaStats.elapsedMs.toFixed(0)} ms`
-        : 'Leyendo hojas T1, T2, T3, T5 y construyendo JSON…',
+        : 'Leyendo hojas T_1, T_2, T_3, T_5 y construyendo JSON…',
     },
     {
       key: 'matrix' as const, num: '2',
       label: 'Generar Matriz de Competencias',
       sub: matrixStats
-        ? `${matrixStats.totalFilas} filas · ${matrixStats.programas} programas · ${matrixStats.totalErrores} errores`
-        : 'Construyendo jerarquía Programa → MetaCompetencia → RA → Indicador…',
+        ? `${matrixStats.totalFilas} indicadores · ${matrixStats.totalErrores} errores`
+        : 'Generando lista de indicadores (ID y descripción)…',
     },
   ]
   return (
@@ -292,7 +294,7 @@ export default function Procesar() {
   const [phase, setPhase]               = useState<Phase>('upload')
   const [mainFile, setMainFile]         = useState<File | null>(null)
   const [equivStatus, setEquivStatus]   = useState<EquivStatus>({ configured: false, message: '' })
-  const [tmPreview, setTmPreview]       = useState<TMPreview | null>(null)
+  const [filePreview, setFilePreview]   = useState<FilePreview | null>(null)
   const [steps, setSteps]               = useState<Steps>({ mega: 'idle', matrix: 'idle' })
   const [megaResult, setMegaResult]     = useState<MegamatrizResult | null>(null)
   const [matrixResult, setMatrixResult] = useState<MatrixResult | null>(null)
@@ -302,17 +304,19 @@ export default function Procesar() {
     checkEquivStatus().then(setEquivStatus).catch(() => {})
   }, [])
 
-  // ── Fase 1: verificar TM ───────────────────────────────────────────────────
+  // ── Fase 1: verificar archivo ──────────────────────────────────────────────
   const handleVerify = async () => {
     if (!mainFile) return
     setPhase('verifying')
     setApiError(null)
     try {
-      const preview = await previewTM(mainFile)
-      setTmPreview(preview)
+      const preview = await previewFile(mainFile)
+      setFilePreview(preview)
       setPhase('preview')
-      if (!preview.tmEncontrada) {
-        toast('Hoja TM no encontrada', { type: 'warning', message: 'Se usará el nombre del programa como fallback.' })
+      if (preview.faltantes.length > 0) {
+        toast('Faltan hojas en el archivo', { type: 'error', message: preview.faltantes.join(', ') })
+      } else if (preview.conflictos.length > 0) {
+        toast(`${preview.conflictos.length} indicadores en conflicto`, { type: 'warning', message: 'Se omitirán al procesar.' })
       }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? (err as Error)?.message ?? 'Error desconocido'
@@ -357,7 +361,7 @@ export default function Procesar() {
   }
 
   const handleReset = () => {
-    setMainFile(null); setPhase('upload'); setTmPreview(null)
+    setMainFile(null); setPhase('upload'); setFilePreview(null)
     setSteps({ mega: 'idle', matrix: 'idle' })
     setMegaResult(null); setMatrixResult(null); setApiError(null)
   }
@@ -368,7 +372,7 @@ export default function Procesar() {
         <h1 className="page-title">Procesar Megamatriz</h1>
         <div className="title-underline" />
         <p className="page-subtitle -mt-4">
-          Sube el archivo Excel, verifica los datos de la hoja TM y genera automáticamente el JSON y la Matriz de Competencias.
+          Sube el archivo Omnia.xlsx, verifica su estructura y genera automáticamente el JSON y la Matriz de Competencias.
         </p>
       </div>
 
@@ -386,11 +390,11 @@ export default function Procesar() {
           </div>
           <div className="card-body space-y-4">
             <FileDropzone
-              label="Seleccionar Megamatriz Electivas.xlsx"
+              label="Seleccionar Omnia.xlsx"
               accept=".xlsx,.xls"
               file={mainFile}
-              onChange={(f) => { setMainFile(f); setTmPreview(null) }}
-              hint="Excel con hojas T1, T2, T3, T5 y TM"
+              onChange={(f) => { setMainFile(f); setFilePreview(null) }}
+              hint="Excel con hojas T_1, T_2, T_3 y T_5"
               disabled={phase === 'verifying'}
             />
 
@@ -415,7 +419,7 @@ export default function Procesar() {
               <p className="text-xs text-slate-400">
                 {!equivStatus.configured ? 'Configura las equivalencias primero'
                   : !mainFile ? 'Selecciona el archivo Excel'
-                  : 'Primero se verificará la hoja TM antes de procesar'}
+                  : 'Primero se verificará la estructura del archivo'}
               </p>
               <button
                 onClick={handleVerify}
@@ -423,19 +427,19 @@ export default function Procesar() {
                 className="btn-primary"
               >
                 {phase === 'verifying'
-                  ? <><Loader2 className="w-4 h-4 animate-spin" />Leyendo TM…</>
-                  : <><Eye className="w-4 h-4" />Verificar hoja TM</>}
+                  ? <><Loader2 className="w-4 h-4 animate-spin" />Leyendo archivo…</>
+                  : <><Eye className="w-4 h-4" />Verificar archivo</>}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── FASE: Preview TM ────────────────────────────────────────────────── */}
-      {phase === 'preview' && tmPreview && (
+      {/* ── FASE: Preview archivo ───────────────────────────────────────────── */}
+      {phase === 'preview' && filePreview && (
         <div className="mb-5">
-          <TMPreviewPanel
-            preview={tmPreview}
+          <FilePreviewPanel
+            preview={filePreview}
             onConfirm={handleProcess}
             onReset={handleReset}
           />
@@ -488,14 +492,20 @@ export default function Procesar() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <StatsCard icon={FileJson}    label="Cursos procesados"  value={megaResult.stats.procesados} color="navy" />
               <StatsCard icon={AlertCircle} label="Errores Megamatriz" value={megaResult.stats.totalErrores} color={megaResult.stats.totalErrores > 0 ? 'red' : 'emerald'} />
-              <StatsCard icon={Grid3X3}     label="Filas en matriz"    value={matrixResult.stats.totalFilas} color="emerald" />
-              <StatsCard icon={Shield}      label="Programas raíz"     value={matrixResult.stats.programas} color="slate" />
+              <StatsCard icon={Grid3X3}     label="Indicadores en matriz" value={matrixResult.stats.totalFilas} color="emerald" />
+              <StatsCard
+                icon={Shield}
+                label="Cursos omitidos"
+                value={megaResult.stats.cursosOmitidos}
+                sub="Departamento sin equivalencia"
+                color={megaResult.stats.cursosOmitidos > 0 ? 'amber' : 'slate'}
+              />
               <StatsCard
                 icon={Layers}
-                label="Padres desde TM"
-                value={megaResult.stats.tmEntradas ?? 0}
-                sub={megaResult.stats.tmEntradas ? 'Nombres leídos de hoja TM' : 'Sin hoja TM'}
-                color={megaResult.stats.tmEntradas ? 'navy' : 'amber'}
+                label="Indicadores omitidos"
+                value={megaResult.stats.indicadoresOmitidos}
+                sub="ID con descripción o rúbrica distinta"
+                color={megaResult.stats.indicadoresOmitidos > 0 ? 'amber' : 'slate'}
               />
             </div>
 
@@ -515,7 +525,7 @@ export default function Procesar() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr style={{ backgroundColor: '#11225a' }}>
-                        {['ID Paterno', 'ID Nodo', 'Nombre corto'].map((h) => (
+                        {['ID Indicador', 'Descripción'].map((h) => (
                           <th key={h} className="text-left px-5 py-3 font-semibold text-white/80 uppercase tracking-wide whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -523,16 +533,15 @@ export default function Procesar() {
                     <tbody className="divide-y divide-slate-100">
                       {matrixResult.filas.slice(0, 8).map((row, i) => (
                         <tr key={i} className="hover:bg-brand-50/40 transition-colors">
-                          <td className="px-5 py-3 font-mono text-slate-400 max-w-[120px] truncate">{row['Número ID paterno'] || '—'}</td>
-                          <td className="px-5 py-3 font-mono font-semibold text-brand-700 max-w-[180px] truncate">{row['Número ID']}</td>
-                          <td className="px-5 py-3 text-slate-600 max-w-[280px] truncate">{row['Nombre_corto']}</td>
+                          <td className="px-5 py-3 font-mono font-semibold text-brand-700 whitespace-nowrap">{row['ID Indicador']}</td>
+                          <td className="px-5 py-3 text-slate-600 max-w-[520px] truncate">{row['Descripción']}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                   {matrixResult.filas.length > 8 && (
                     <div className="px-5 py-3 text-center text-xs text-slate-400 border-t border-slate-100 bg-slate-50">
-                      +{matrixResult.filas.length - 8} filas adicionales en el CSV
+                      +{matrixResult.filas.length - 8} indicadores adicionales en el CSV
                     </div>
                   )}
                 </div>
@@ -550,7 +559,7 @@ export default function Procesar() {
                   <Download className="w-4 h-4 shrink-0" />
                   <div className="text-left">
                     <p className="font-bold">Matriz_Competencias.csv</p>
-                    <p className="text-xs opacity-75 font-normal mt-0.5">{matrixResult.stats.totalFilas} filas jerárquicas</p>
+                    <p className="text-xs opacity-75 font-normal mt-0.5">{matrixResult.stats.totalFilas} indicadores</p>
                   </div>
                 </button>
                 <button onClick={() => { downloadJSON(megaResult.resultado, 'salida.json'); toast('JSON descargado', { type: 'success' }) }} className="btn-secondary justify-start gap-3 py-3.5">

@@ -1,6 +1,9 @@
 """
-Servicio de procesamiento de Megamatriz Electivas.
+Servicio de procesamiento de la Megamatriz (v2, estructura Omnia.xlsx).
 Adaptado de procesar_megamatriz.py para funcionar con FastAPI (bytes en memoria).
+
+Estructura esperada: hojas T_1, T_2, T_3 y T_5 (también se aceptan T1, T2, T3, T5).
+Cada indicador se identifica por 'ID Indicador' (mismo ID para todos los programas).
 """
 
 import getpass
@@ -9,7 +12,6 @@ import os
 import re
 import socket
 import time
-import unicodedata
 from datetime import datetime
 
 import pandas as pd
@@ -24,11 +26,12 @@ NIVEL_CODIGOS: dict[str, str] = {
     "Saber":      "S",
 }
 
-RASGOS_MAP: dict[str, str] = {
-    "Rasgo Actitud Humanizadora (AH)":         "Actitud Humanizadora",
-    "Rasgo Conexión con el Entorno (CE)":  "Conexión con el Entorno",
-    "Rasgo Conexión Global (CG)":           "Conexión Global",
-    "Rasgo Cointeligencia (CI)":                 "Cointeligencia",
+# Rasgo → nombres de columna aceptados (las entregas han usado ambas siglas)
+RASGOS_MAP: dict[str, tuple[str, ...]] = {
+    "Actitud Humanizadora":    ("Rasgo Actitud Humanizadora (AH)", "Rasgo Actitud Humanizadora (H)"),
+    "Conexión con el Entorno": ("Rasgo Conexión con el Entorno (CE)", "Rasgo Conexión con el Entorno (E)"),
+    "Conexión Global":         ("Rasgo Conexión Global (CG)", "Rasgo Conexión Global (G)"),
+    "Cointeligencia":          ("Rasgo Cointeligencia (CI)", "Rasgo Cointeligencia (C)"),
 }
 
 NO_APLICA = {"no aplica", "no aplica.", "nan", "", "none"}
@@ -41,6 +44,18 @@ PREFIJOS_NIVEL = {
 }
 
 COL_CATALOGO = "Número de catálogo"
+COL_ID_INDICADOR = "ID Indicador"
+
+# Hojas requeridas: clave lógica → nombres aceptados (el primero es el de Omnia.xlsx)
+HOJAS: dict[str, tuple[str, ...]] = {
+    "T1": ("T_1", "T1"),
+    "T2": ("T_2", "T2"),
+    "T3": ("T_3", "T3"),
+    "T5": ("T_5", "T5"),
+}
+
+# Campos que deben coincidir en todas las filas de un mismo ID Indicador
+CAMPOS_INDICADOR = ("Indicador de desempeño", "Inicial", "Progresivo", "Avanzado", "Excelente")
 
 
 # ── Utilidades ─────────────────────────────────────────────────────────────────
@@ -137,37 +152,26 @@ def siga_id_a_str(valor) -> str:
     return str(int(float(str(valor).strip())))
 
 
-def extraer_codigo_meta(id_indicador: str) -> str:
-    partes = id_indicador.strip().split("_")
-    if partes[-1].upper() == "SABE":
-        return "SABE"
-    # 'SABE' en medio (ej. ..._SABE_UX_INS): la metacompetencia va desde 'SABE'
-    # hasta el final (SABE_UX_INS); su padre raíz será UX_INS.
-    for i, p in enumerate(partes):
-        if p.upper() == "SABE":
-            return "_".join(partes[i:])
-    for i, p in enumerate(partes):
-        if re.match(r"^M\d+$", p):
-            return "_".join(partes[i:])
-    return "_".join(partes[-2:])
-
-
-def extraer_codigo_ra(id_indicador: str) -> str:
-    partes = id_indicador.strip().split("_")
-    if partes[-1].upper() == "SABE":
-        return "_".join(partes[-2:])
-    for i, p in enumerate(partes):
-        if re.match(r"^RA\d+$", p):
-            return "_".join(partes[i:])
-    return "_".join(partes[-3:])
+def id_indicador_a_str(valor) -> str:
+    """'2348', 2348 o 2348.0 → '2348'. Valores no numéricos se devuelven limpios."""
+    if es_vacio_estricto(valor):
+        return ""
+    try:
+        num = float(str(valor).strip())
+        if num.is_integer():
+            return str(int(num))
+    except ValueError:
+        pass
+    return limpiar_str(valor)
 
 
 def extraer_rasgos(fila: pd.Series) -> list[str]:
     rasgos = []
-    for col_nombre, rasgo_corto in RASGOS_MAP.items():
-        valor = str(fila.get(col_nombre, "")).strip().lower()
+    for rasgo, columnas in RASGOS_MAP.items():
+        col = next((c for c in columnas if c in fila.index), None)
+        valor = str(fila.get(col, "")).strip().lower() if col else ""
         if valor.startswith("tiene"):
-            rasgos.append(rasgo_corto)
+            rasgos.append(rasgo)
     return rasgos
 
 
@@ -206,50 +210,64 @@ def construir_mapa_programa(df_t1: pd.DataFrame) -> dict[str, str]:
     return mapa
 
 
-def _normalizar_col(s: str) -> str:
-    """NFC + minúsculas + sin acentos para comparación robusta de nombres de columna."""
-    s = unicodedata.normalize("NFC", str(s)).strip().lower()
-    return unicodedata.normalize("NFD", s).encode("ascii", "ignore").decode("ascii")
+def resolver_hojas(sheets: dict) -> tuple[dict[str, str], list[str]]:
+    """Devuelve ({clave lógica: nombre real de la hoja}, [hojas faltantes])."""
+    encontradas: dict[str, str] = {}
+    faltantes: list[str] = []
+    for clave, nombres in HOJAS.items():
+        nombre = next((n for n in nombres if n in sheets), None)
+        if nombre:
+            encontradas[clave] = nombre
+        else:
+            faltantes.append(nombres[0])
+    return encontradas, faltantes
 
 
-def leer_tm(sheets: dict) -> dict[str, str]:
+def quitar_encabezados_repetidos(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Lee la hoja TM del Excel.
-    Columna 'Matriz Principal' → código del padre principal (ej. 'UX_INS').
-    Columna 'Descripción'      → texto para Nombre_corto y Descripción del padre.
-    Busca las columnas por subcadena para tolerar variaciones de tildes y espacios.
-    Retorna un dict {codigo_padre: descripcion}.
+    Elimina filas que repiten los encabezados (la mitad o más de sus celdas son
+    iguales al nombre de su columna). Conserva el índice original para que los
+    números de fila reportados sigan coincidiendo con el Excel.
     """
-    df_tm = sheets.get("TM", pd.DataFrame())
-    if df_tm.empty:
+    if df.empty:
+        return df
+    nombres = [str(c).strip() for c in df.columns]
+    def es_encabezado(row) -> bool:
+        iguales = sum(1 for v, n in zip(row.tolist(), nombres) if str(v).strip() == n)
+        return iguales >= max(2, len(nombres) // 2)
+    mask = df.apply(es_encabezado, axis=1)
+    return df[~mask]
+
+
+def _listar_filas(filas: list[int], maximo: int = 10) -> str:
+    texto = ", ".join(str(f) for f in filas[:maximo])
+    return texto + (f" y {len(filas) - maximo} más" if len(filas) > maximo else "")
+
+
+def analizar_indicadores(df_t2: pd.DataFrame) -> dict[str, dict]:
+    """
+    Regla: un mismo ID Indicador debe tener la misma descripción y la misma
+    rúbrica (Inicial, Progresivo, Avanzado, Excelente) en todo el archivo.
+    Retorna {id: {"filas": [...], "campos": [...]}} solo para los IDs que la incumplen.
+    """
+    if COL_ID_INDICADOR not in df_t2.columns:
         return {}
-
-    # Mapa normalizado → nombre original de columna
-    col_norm = {_normalizar_col(c): str(c) for c in df_tm.columns}
-
-    col_codigo: str | None = None
-    col_desc:   str | None = None
-    for norm, original in col_norm.items():
-        if "matriz" in norm and "principal" in norm:
-            col_codigo = original
-        if "descr" in norm:   # cubre Descripción, Descripcion, Descrpción (typo), etc.
-            col_desc = original
-
-    if not col_codigo or not col_desc:
-        import logging
-        logging.getLogger(__name__).warning(
-            "Hoja TM: no se encontraron columnas 'Matriz Principal' o 'Descripción'. "
-            f"Columnas disponibles: {list(df_tm.columns)}"
-        )
-        return {}
-
-    mapa: dict[str, str] = {}
-    for _, row in df_tm.iterrows():
-        codigo = limpiar_str(row.get(col_codigo, ""))
-        desc   = limpiar_str(row.get(col_desc, ""))
-        if codigo and desc and codigo not in mapa:
-            mapa[codigo] = desc
-    return mapa
+    valores: dict[str, dict[str, set]] = {}
+    filas: dict[str, list[int]] = {}
+    for idx, row in df_t2.iterrows():
+        id_ind = id_indicador_a_str(row.get(COL_ID_INDICADOR, ""))
+        if not id_ind:
+            continue
+        filas.setdefault(id_ind, []).append(idx + 2)
+        por_campo = valores.setdefault(id_ind, {c: set() for c in CAMPOS_INDICADOR})
+        for campo in CAMPOS_INDICADOR:
+            por_campo[campo].add(limpiar_str(row.get(campo, "")))
+    conflictos: dict[str, dict] = {}
+    for id_ind, por_campo in valores.items():
+        campos = [c for c in CAMPOS_INDICADOR if len(por_campo[c]) > 1]
+        if campos:
+            conflictos[id_ind] = {"filas": filas[id_ind], "campos": campos}
+    return conflictos
 
 
 # ── Sub-estructuras ─────────────────────────────────────────────────────────────
@@ -282,7 +300,7 @@ def _filas_ordenadas(sub_df: pd.DataFrame):
     return list(sub_df.iterrows())
 
 
-def construir_saberes(num_catalogo: str, df_t3: pd.DataFrame, errores: list) -> list:
+def construir_saberes(num_catalogo: str, df_t3: pd.DataFrame, errores: list, hoja: str = "T_3") -> list:
     mask = df_t3[COL_CATALOGO].astype(str).str.strip() == num_catalogo.strip()
     saberes = []
     for idx, row in _filas_ordenadas(df_t3[mask]):
@@ -294,7 +312,7 @@ def construir_saberes(num_catalogo: str, df_t3: pd.DataFrame, errores: list) -> 
         if (es_vacio_estricto(saber_raw) or str(saber_raw).strip() == "0" or not titulo
                 or es_vacio_estricto(desc_raw) or str(desc_raw).strip() == "0" or not desc):
             errores.append({
-                "hoja": "T3", "fila": fila_excel,
+                "hoja": hoja, "fila": fila_excel,
                 "error": "El valor en el campo 'Saber' o 'Descripción' no es válido",
             })
             continue
@@ -302,7 +320,7 @@ def construir_saberes(num_catalogo: str, df_t3: pd.DataFrame, errores: list) -> 
     return saberes
 
 
-def construir_referencias(num_catalogo: str, df_t5: pd.DataFrame, errores: list) -> list:
+def construir_referencias(num_catalogo: str, df_t5: pd.DataFrame, errores: list, hoja: str = "T_5") -> list:
     mask = df_t5[COL_CATALOGO].astype(str).str.strip() == num_catalogo.strip()
     referencias = []
     for idx, row in _filas_ordenadas(df_t5[mask]):
@@ -311,7 +329,7 @@ def construir_referencias(num_catalogo: str, df_t5: pd.DataFrame, errores: list)
         texto = limpiar_str(ref_raw)
         if es_vacio_estricto(ref_raw) or str(ref_raw).strip() == "0" or not texto:
             errores.append({
-                "hoja": "T5", "fila": fila_excel,
+                "hoja": hoja, "fila": fila_excel,
                 "error": "El valor en el campo 'Referencia' no es válido",
             })
             continue
@@ -323,21 +341,13 @@ def construir_referencias(num_catalogo: str, df_t5: pd.DataFrame, errores: list)
     return referencias
 
 
-def construir_competencias(num_catalogo: str, df_t2: pd.DataFrame, mapa_programa: dict) -> list:
+def construir_competencias(num_catalogo: str, df_t2: pd.DataFrame, mapa_programa: dict,
+                           ids_omitidos: set) -> list:
     mask = df_t2[COL_CATALOGO].astype(str).str.strip() == num_catalogo.strip()
     competencias = []
     for _, row in df_t2[mask].iterrows():
-        id_equivalente = limpiar_str(row.get("ID Indicador equivalente", ""))
-        id_principal = limpiar_str(row.get("ID Indicador principal", ""))
-        if id_equivalente:
-            id_ind = id_equivalente
-            tipo = "Homologado"
-            codigo_homolog = id_principal
-        elif id_principal:
-            id_ind = id_principal
-            tipo = "Principal"
-            codigo_homolog = "No Aplica"
-        else:
+        id_ind = id_indicador_a_str(row.get(COL_ID_INDICADOR, ""))
+        if not id_ind or id_ind in ids_omitidos:
             continue
         nivel_nombre = limpiar_str(row.get("Nivel de logro", ""))
         nivel_cod = NIVEL_CODIGOS.get(nivel_nombre, nivel_nombre)
@@ -347,39 +357,34 @@ def construir_competencias(num_catalogo: str, df_t2: pd.DataFrame, mapa_programa
             "programa": {"nombre": nombre_prog, "codigo": source_name},
             "metaCompetencia": {
                 "titulo": limpiar_str(row.get("Metacompetencia", "")),
-                "codigo": extraer_codigo_meta(id_ind),
             },
             "indicadorDesempeno": {
                 "descripcion": limpiar_str(row.get("Indicador de desempeño", "")),
                 "codigo": id_ind,
-                "tipo": tipo,
-                "codigoHomologado": codigo_homolog,
+                # Ya no hay homologados (mismo ID para todos los programas); se
+                # conservan con valor fijo para no romper a quien consume el JSON.
+                "tipo": "Principal",
+                "codigoHomologado": "No Aplica",
+                "clasificacion": limpiar_str(row.get("Clasificación de Indicador", "")),
             },
             "nivel": {"nivel": nivel_nombre, "codigo": nivel_cod},
             "resultadoAprendizaje": {
                 "descripcion": limpiar_str(row.get("Resultados de aprendizaje", "")),
-                "codigo": extraer_codigo_ra(id_ind),
             },
         })
     return competencias
 
 
-def construir_rubrica(num_catalogo: str, df_t2: pd.DataFrame) -> list:
+def construir_rubrica(num_catalogo: str, df_t2: pd.DataFrame, ids_omitidos: set) -> list:
+    """Una entrada por ID Indicador en el curso (el mismo ID puede venir de varios programas)."""
     mask = df_t2[COL_CATALOGO].astype(str).str.strip() == num_catalogo.strip()
     rubrica = []
-    vistos_codigo: set[str] = set()
-    vistos_desc: set[str] = set()
+    vistos: set[str] = set()
     for _, row in df_t2[mask].iterrows():
-        id_equivalente = limpiar_str(row.get("ID Indicador equivalente", ""))
-        id_principal = limpiar_str(row.get("ID Indicador principal", ""))
-        if id_equivalente or not id_principal:
+        id_ind = id_indicador_a_str(row.get(COL_ID_INDICADOR, ""))
+        if not id_ind or id_ind in ids_omitidos or id_ind in vistos:
             continue
-        descripcion = limpiar_str(row.get("Indicador de desempeño", ""))
-        if id_principal in vistos_codigo or descripcion in vistos_desc:
-            continue
-        vistos_codigo.add(id_principal)
-        if descripcion:
-            vistos_desc.add(descripcion)
+        vistos.add(id_ind)
 
         def nivel_texto(col: str) -> str:
             prefijo = PREFIJOS_NIVEL.get(col, f"{col} - ")
@@ -387,7 +392,10 @@ def construir_rubrica(num_catalogo: str, df_t2: pd.DataFrame) -> list:
             return f"{prefijo}{valor}" if valor else ""
 
         rubrica.append({
-            "indicadorDesempeno": {"descripcion": descripcion, "codigo": id_principal},
+            "indicadorDesempeno": {
+                "descripcion": limpiar_str(row.get("Indicador de desempeño", "")),
+                "codigo": id_ind,
+            },
             "nivelInicial": nivel_texto("Inicial") or None,
             "nivelProgresivo": nivel_texto("Progresivo") or None,
             "nivelAvanzado": nivel_texto("Avanzado") or None,
@@ -396,11 +404,10 @@ def construir_rubrica(num_catalogo: str, df_t2: pd.DataFrame) -> list:
     return rubrica
 
 
-def construir_registro(fila, df_t2, df_t3, df_t5, mapa_tipo_registro, mapa_departamento, mapa_programa, errores):
+def construir_registro(fila, df_t2, df_t3, df_t5, mapa_tipo_registro, dept_nombre, dept_codigo,
+                       mapa_programa, ids_omitidos, hojas, errores):
     num_catalogo = limpiar_str(fila.get("Número de catálogo", ""))
     id_siga = siga_id_a_str(fila["ID SIGA"])
-    dept_nombre = limpiar_str(fila.get("Departamento que oferta el espacio académico", ""))
-    dept_codigo = mapa_departamento.get(dept_nombre, "")
     tipo_reg_nombre = limpiar_str(fila.get("Tipo de registro", ""))
     tipo_reg_codigo = mapa_tipo_registro.get(tipo_reg_nombre, tipo_reg_nombre)
     aula = a_int(fila.get("Aula", 0))
@@ -413,7 +420,6 @@ def construir_registro(fila, df_t2, df_t3, df_t5, mapa_tipo_registro, mapa_depar
     horas_fisico_asin = a_int(_get_seguro(fila, "Físico asincrónico", 0))
     horas_virtual_sin = a_int(_get_seguro(fila, "Virtual sincrónico", 0))
     horas_virtual_asin = a_int(_get_seguro(fila, "Virtual asincrónico", 0))
-    horas_hyflex = a_int(_get_seguro(fila, "Hyflex", 0))
     horas_practicas = a_int(fila.get("Horas prácticas", 0))
     horas_hti = a_int(fila.get("Horas de trabajo independiente (HTI)", 0))
     horas_total = a_int(fila.get("Horas totales (HTT)", 0))
@@ -428,7 +434,6 @@ def construir_registro(fila, df_t2, df_t3, df_t5, mapa_tipo_registro, mapa_depar
                 "FisicoAsincronico": horas_fisico_asin,
                 "VirtualSincronico": horas_virtual_sin,
                 "VirtualAsincronico": horas_virtual_asin,
-                "Hyflex": horas_hyflex,
             },
             "TeoricoPracticas": teor + htp,
             "Practicas": horas_practicas,
@@ -444,16 +449,16 @@ def construir_registro(fila, df_t2, df_t3, df_t5, mapa_tipo_registro, mapa_depar
         "metodologia": limpiar_str(fila.get("Metodología de aprendizaje experiencial", "")),
         "gradoInternacionalizacion": None,
         "tipoDeRegistro": tipo_reg_codigo,
-        "saberes": construir_saberes(num_catalogo, df_t3, errores),
-        "referencias": construir_referencias(num_catalogo, df_t5, errores),
+        "saberes": construir_saberes(num_catalogo, df_t3, errores, hojas["T3"]),
+        "referencias": construir_referencias(num_catalogo, df_t5, errores, hojas["T5"]),
         "UX": {
             "competenciaCertificable": html_wrap(fila.get("Competencia Certificable", "")),
             "desCompetencia": html_wrap(fila.get("Descripción de Competencia Certificable", "")),
             "rasgos": extraer_rasgos(fila),
             "clasificador": limpiar_str(fila.get("Clasificador de Módulo", "")),
         },
-        "competencias": construir_competencias(num_catalogo, df_t2, mapa_programa),
-        "rubricaEvaluacion": construir_rubrica(num_catalogo, df_t2),
+        "competencias": construir_competencias(num_catalogo, df_t2, mapa_programa, ids_omitidos),
+        "rubricaEvaluacion": construir_rubrica(num_catalogo, df_t2, ids_omitidos),
         "prerrequisitos": construir_lista_texto(fila.get("Presaberes", "")),
         "correquisitos": construir_lista_texto(fila.get("Cosaberes", "")),
     }
@@ -465,18 +470,36 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
     t_inicio = time.perf_counter()
 
     sheets = pd.read_excel(io.BytesIO(main_bytes), sheet_name=None)
-    df_t1 = sheets.get("T1", pd.DataFrame())
-    df_t2 = sheets.get("T2", pd.DataFrame())
-    df_t3 = sheets.get("T3", pd.DataFrame())
-    df_t5 = sheets.get("T5", pd.DataFrame())
+    hojas, faltantes = resolver_hojas(sheets)
+    if faltantes:
+        raise ValueError(
+            f"Faltan hojas en el archivo: {', '.join(faltantes)}. "
+            f"Hojas encontradas: {', '.join(map(str, sheets.keys()))}"
+        )
+    df_t1 = quitar_encabezados_repetidos(sheets[hojas["T1"]])
+    df_t2 = quitar_encabezados_repetidos(sheets[hojas["T2"]])
+    df_t3 = quitar_encabezados_repetidos(sheets[hojas["T3"]])
+    df_t5 = quitar_encabezados_repetidos(sheets[hojas["T5"]])
 
     mapa_tipo_registro, mapa_departamento = leer_equivalencias_bytes(equiv_bytes)
     mapa_programa = construir_mapa_programa(df_t1)
-    mapa_tm = leer_tm(sheets)
 
     errores: list[dict] = []
-    resultado: dict = {"status": True, "data": {}, "tm": mapa_tm}
+    resultado: dict = {"status": True, "data": {}}
     procesados = 0
+    cursos_omitidos = 0
+
+    # IDs con descripción o rúbrica distinta entre filas: se omiten y se reportan una vez
+    conflictos = analizar_indicadores(df_t2)
+    for id_ind, info in conflictos.items():
+        errores.append({
+            "hoja": hojas["T2"], "fila": info["filas"][0],
+            "error": (
+                f"ID Indicador {id_ind}: valores distintos en {', '.join(info['campos'])} "
+                f"(filas {_listar_filas(info['filas'])}) — indicador omitido"
+            ),
+        })
+    ids_omitidos = set(conflictos)
 
     for idx, fila in df_t1.iterrows():
         fila_num = idx + 2
@@ -486,31 +509,44 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
         if es_vacio_estricto(id_siga_raw):
             continue
 
+        dept_nombre = limpiar_str(fila.get("Departamento que oferta el espacio académico", ""))
+        dept_codigo = mapa_departamento.get(dept_nombre, "")
+        if not dept_codigo:
+            errores.append({
+                "hoja": hojas["T1"], "fila": fila_num,
+                "error": (
+                    f"Departamento '{dept_nombre or '(vacío)'}' no está en la Tabla de equivalencias "
+                    f"— curso {limpiar_str(fila.get('Número de catálogo', ''))} omitido"
+                ),
+            })
+            cursos_omitidos += 1
+            continue
+
         try:
             registro = construir_registro(
-                fila, df_t2, df_t3, df_t5,
-                mapa_tipo_registro, mapa_departamento, mapa_programa, errores,
+                fila, df_t2, df_t3, df_t5, mapa_tipo_registro, dept_nombre, dept_codigo,
+                mapa_programa, ids_omitidos, hojas, errores,
             )
             resultado["data"][registro["idCursoSiga"]] = registro
             procesados += 1
         except KeyError as exc:
             # Error real: columna no encontrada
             errores.append({
-                "hoja": "T1", "fila": fila_num,
+                "hoja": hojas["T1"], "fila": fila_num,
                 "error": f"Columna no encontrada: {exc}",
                 "tipo": "COLUMNA_FALTANTE",
             })
         except ValueError as exc:
             # Error real: dato inválido
             errores.append({
-                "hoja": "T1", "fila": fila_num,
+                "hoja": hojas["T1"], "fila": fila_num,
                 "error": f"Dato inválido: {exc}",
                 "tipo": "DATO_INVALIDO",
             })
         except Exception as exc:
             # Error inesperado
             errores.append({
-                "hoja": "T1", "fila": fila_num,
+                "hoja": hojas["T1"], "fila": fila_num,
                 "error": f"Error inesperado: {exc}",
                 "tipo": "ERROR_INESPERADO",
             })
@@ -533,11 +569,13 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
         "stats": {
             "procesados": procesados,
             "totalErrores": len(errores),
-            "t1Errores": sum(1 for e in errores if e["hoja"] == "T1"),
-            "t3Errores": sum(1 for e in errores if e["hoja"] == "T3"),
-            "t5Errores": sum(1 for e in errores if e["hoja"] == "T5"),
+            "t1Errores": sum(1 for e in errores if e["hoja"] == hojas["T1"]),
+            "t2Errores": sum(1 for e in errores if e["hoja"] == hojas["T2"]),
+            "t3Errores": sum(1 for e in errores if e["hoja"] == hojas["T3"]),
+            "t5Errores": sum(1 for e in errores if e["hoja"] == hojas["T5"]),
             "totalFilasT1": len(df_t1),
-            "tmEntradas": len(mapa_tm),
+            "cursosOmitidos": cursos_omitidos,
+            "indicadoresOmitidos": len(ids_omitidos),
             "elapsedMs": round(elapsed_ms, 1),
         },
         "audit": {
@@ -546,4 +584,30 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
             "fecha": fecha_gen,
             "archivoFuente": filename,
         },
+    }
+
+
+def previsualizar(main_bytes: bytes) -> dict:
+    """Revisión rápida del archivo antes de procesar: hojas, filas e indicadores en conflicto."""
+    sheets = pd.read_excel(io.BytesIO(main_bytes), sheet_name=None)
+    hojas, faltantes = resolver_hojas(sheets)
+    filas = {nombre: len(quitar_encabezados_repetidos(sheets[nombre])) for nombre in hojas.values()}
+    indicadores = 0
+    conflictos: list[dict] = []
+    if "T2" in hojas:
+        df_t2 = quitar_encabezados_repetidos(sheets[hojas["T2"]])
+        if COL_ID_INDICADOR in df_t2.columns:
+            indicadores = len({
+                i for i in (id_indicador_a_str(v) for v in df_t2[COL_ID_INDICADOR]) if i
+            })
+        conflictos = [
+            {"id": id_ind, "campos": info["campos"], "filas": info["filas"]}
+            for id_ind, info in analizar_indicadores(df_t2).items()
+        ]
+    return {
+        "hojas": [str(h) for h in sheets.keys()],
+        "faltantes": faltantes,
+        "filasPorHoja": filas,
+        "indicadores": indicadores,
+        "conflictos": conflictos,
     }

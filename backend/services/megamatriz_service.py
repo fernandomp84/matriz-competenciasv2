@@ -68,8 +68,12 @@ CAMPOS_CURSO = (
     "Idioma", "Descripción de la asignatura o espacio académico", "nivelFormacion",
     "EspacioAcademico", "Modalidad", "Metodología de aprendizaje experiencial",
     "Competencia Certificable", "Descripción de Competencia Certificable",
-    "Clasificador de Módulo", "Presaberes", "Cosaberes",
+    "Presaberes", "Cosaberes",
 ) + tuple(c for columnas in RASGOS_MAP.values() for c in columnas)
+
+# 'Clasificador de Módulo' NO está en CAMPOS_CURSO: puede variar por programa y
+# se envía como lista con todos los valores del curso (igual que 'rasgos').
+COL_CLASIFICADOR = "Clasificador de Módulo"
 
 
 # ── Utilidades ─────────────────────────────────────────────────────────────────
@@ -467,8 +471,32 @@ def construir_rubrica(num_catalogo: str, df_t2: pd.DataFrame, ids_omitidos: set)
     return rubrica
 
 
+def clasificadores_por_curso(df_t1: pd.DataFrame) -> dict[str, list[str]]:
+    """
+    {id_siga: [clasificadores]} con los valores distintos de 'Clasificador de Módulo'
+    en todas las filas del curso (una por programa), en orden de aparición.
+    Las diferencias solo de mayúsculas cuentan como el mismo valor.
+    """
+    mapa: dict[str, list[str]] = {}
+    if COL_CLASIFICADOR not in df_t1.columns:
+        return mapa
+    for _, fila in df_t1.iterrows():
+        id_raw = fila.get("ID SIGA", None)
+        if es_vacio_estricto(id_raw):
+            continue
+        try:
+            id_siga = siga_id_a_str(id_raw)
+        except (ValueError, TypeError):
+            id_siga = limpiar_str(id_raw)
+        valores = mapa.setdefault(id_siga, [])
+        texto = limpiar_str(fila.get(COL_CLASIFICADOR, ""))
+        if texto and texto.lower() not in (v.lower() for v in valores):
+            valores.append(texto)
+    return mapa
+
+
 def construir_registro(fila, df_t2, df_t3, df_t5, mapa_tipo_registro, dept_nombre, dept_codigo,
-                       mapa_programa, ids_omitidos, hojas, errores):
+                       mapa_programa, ids_omitidos, hojas, errores, clasificadores=None):
     num_catalogo = limpiar_str(fila.get("Número de catálogo", ""))
     id_siga = siga_id_a_str(fila["ID SIGA"])
     tipo_reg_nombre = limpiar_str(fila.get("Tipo de registro", ""))
@@ -518,7 +546,7 @@ def construir_registro(fila, df_t2, df_t3, df_t5, mapa_tipo_registro, dept_nombr
             "competenciaCertificable": html_wrap(fila.get("Competencia Certificable", "")),
             "desCompetencia": html_wrap(fila.get("Descripción de Competencia Certificable", "")),
             "rasgos": extraer_rasgos(fila),
-            "clasificador": limpiar_str(fila.get("Clasificador de Módulo", "")),
+            "clasificador": clasificadores or [],
         },
         "competencias": construir_competencias(num_catalogo, df_t2, mapa_programa, ids_omitidos),
         "rubricaEvaluacion": construir_rubrica(num_catalogo, df_t2, ids_omitidos),
@@ -554,6 +582,7 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
 
     # Cursos con datos distintos entre programas: se omiten y se reportan una vez
     conflictos_cursos = analizar_cursos(df_t1)
+    mapa_clasificadores = clasificadores_por_curso(df_t1)
 
     # IDs con descripción o rúbrica distinta entre filas: se omiten y se reportan una vez
     conflictos = analizar_indicadores(df_t2)
@@ -613,6 +642,7 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
             registro = construir_registro(
                 fila, df_t2, df_t3, df_t5, mapa_tipo_registro, dept_nombre, dept_codigo,
                 mapa_programa, ids_omitidos, hojas, errores,
+                mapa_clasificadores.get(id_siga, []),
             )
             resultado["data"][registro["idCursoSiga"]] = registro
         except KeyError as exc:

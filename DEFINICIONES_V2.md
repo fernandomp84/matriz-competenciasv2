@@ -45,8 +45,8 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
    Si no se cumple, el indicador **se omite** del JSON y de la matriz y se reporta una vez en el archivo de errores (hoja `T_2`).
 2. **Departamento sin equivalencia** en la Tabla de equivalencias ⇒ el **curso se omite** y se reporta (hoja `T_1`).
 2b. **Un curso (ID SIGA) = una entrada.** `T_1` trae una fila por cada programa que dicta el curso; el curso se procesa una sola vez.
-   Si sus filas tienen **datos distintos entre programas** en cualquier columna que va al JSON (p. ej. `Clasificador de Módulo`:
-   'Campo' vs 'Área'), el **curso se omite** y se reporta una vez con los valores y filas de cada variante.
+   Si sus filas tienen **datos distintos entre programas** en cualquier columna que va al JSON, el **curso se omite**
+   y se reporta una vez con los valores y filas de cada variante. Excepción: `Clasificador de Módulo` (ver regla 6b).
    Las diferencias solo de mayúsculas ('No Aplica' / 'No aplica') no cuentan como conflicto. (Definido 2026-10-15.)
 3. Hojas requeridas: `T_1`, `T_2`, `T_3`, `T_5` (también se aceptan `T1`…`T5`). Si falta alguna, el proceso se detiene con error.
 
@@ -54,6 +54,9 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 4. `indicadorDesempeno.codigo` = `ID Indicador` **tal como viene en el Excel, con sus ceros a la izquierda** (ej. `00093`, `02957`). Se usa igual en el JSON, la rúbrica, la matriz y los errores.
 5. `indicadorDesempeno.tipo` = `"Principal"` y `codigoHomologado` = `"No Aplica"` **fijos** (se conservan para no romper consumidores).
 6. Nuevo campo `indicadorDesempeno.clasificacion` = `Clasificación de Indicador`.
+6b. `UX.clasificador` es una **lista** (igual que `UX.rasgos`) con todos los valores distintos de `Clasificador de Módulo`
+   en las filas del curso, en orden de aparición. Ej.: `["Titulación"]`, o `["Campo", "Área"]` si varía según el programa.
+   Puede haber más de uno por curso (definido 2026-10-15).
 7. Se quitan `metaCompetencia.codigo` y `resultadoAprendizaje.codigo` (quedan `titulo` y `descripcion`).
 8. Se quita `horas.Directas.Hyflex`.
 9. `rubricaEvaluacion`: una entrada por `ID Indicador` dentro de cada curso (ya no se filtra por principal/homologado).
@@ -68,14 +71,13 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 
 ## Resultado con `Omnia.xlsx` (2026-10-15 07:47) y equivalencias corregidas (2026-10-15 15:51)
 
-- `T_1`: 704 filas (una por programa) = **273 cursos únicos** → **264 procesados**, 9 omitidos por `Clasificador de Módulo` distinto entre programas.
-- Departamentos: todos con equivalencia (0 omitidos).
-- 939 IDs de indicador → 28 omitidos por conflicto → **884 filas** en la matriz.
+- `T_1`: 704 filas (una por programa) = **273 cursos únicos** → **273 procesados**, 0 omitidos.
+- 9 cursos con más de un clasificador (p. ej. Cálculo Univariado → `["Campo", "Área"]`).
+- 939 IDs de indicador → 28 omitidos por conflicto → **911 filas** en la matriz.
 
 ## Pendientes (dependen de terceros)
 
 - [x] Código del departamento "Educación y Desarrollo Infantil" en la Tabla de equivalencias (corregido 2026-10-15).
-- [ ] Unificar `Clasificador de Módulo` en los 9 cursos con 'Campo'/'Área' distinto entre programas.
 - [ ] Corregir en el Omnia los 28 IDs con descripción/rúbrica distinta.
 - [ ] Confirmar si 273 cursos únicos es la entrega completa.
 - [ ] Confirmar que la plataforma destino acepta el CSV de 2 columnas.

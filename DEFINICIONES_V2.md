@@ -44,6 +44,10 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 1. **Mismo ID ⇒ misma descripción y misma rúbrica** (Inicial, Progresivo, Avanzado, Excelente) en todo el archivo.
    Si no se cumple, el indicador **se omite** del JSON y de la matriz y se reporta una vez en el archivo de errores (hoja `T_2`).
 2. **Departamento sin equivalencia** en la Tabla de equivalencias ⇒ el **curso se omite** y se reporta (hoja `T_1`).
+2b. **Un curso (ID SIGA) = una entrada.** `T_1` trae una fila por cada programa que dicta el curso; el curso se procesa una sola vez.
+   Si sus filas tienen **datos distintos entre programas** en cualquier columna que va al JSON (p. ej. `Clasificador de Módulo`:
+   'Campo' vs 'Área'), el **curso se omite** y se reporta una vez con los valores y filas de cada variante.
+   Las diferencias solo de mayúsculas ('No Aplica' / 'No aplica') no cuentan como conflicto. (Definido 2026-10-15.)
 3. Hojas requeridas: `T_1`, `T_2`, `T_3`, `T_5` (también se aceptan `T1`…`T5`). Si falta alguna, el proceso se detiene con error.
 
 **JSON (`salida.json`)**
@@ -62,16 +66,18 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 **Textos**
 13. Las letras al inicio de las descripciones (`A:`, `C:`, `G:`, `H:`) se dejan tal como vienen.
 
-## Resultado con `Omnia.xlsx` del 2026-10-14 (12:55)
+## Resultado con `Omnia.xlsx` (2026-10-15 07:47) y equivalencias corregidas (2026-10-15 15:51)
 
-- 704 cursos en `T_1` → 700 procesados, 4 omitidos (departamento "Educación y Desarrollo Infantil").
-- 939 IDs de indicador → 28 omitidos por conflicto → **896 filas** en la matriz.
+- `T_1`: 704 filas (una por programa) = **273 cursos únicos** → **264 procesados**, 9 omitidos por `Clasificador de Módulo` distinto entre programas.
+- Departamentos: todos con equivalencia (0 omitidos).
+- 939 IDs de indicador → 28 omitidos por conflicto → **884 filas** en la matriz.
 
 ## Pendientes (dependen de terceros)
 
-- [ ] Código del departamento "Educación y Desarrollo Infantil" en la Tabla de equivalencias.
+- [x] Código del departamento "Educación y Desarrollo Infantil" en la Tabla de equivalencias (corregido 2026-10-15).
+- [ ] Unificar `Clasificador de Módulo` en los 9 cursos con 'Campo'/'Área' distinto entre programas.
 - [ ] Corregir en el Omnia los 28 IDs con descripción/rúbrica distinta.
-- [ ] Confirmar si 704 cursos es la entrega completa (antes eran 1.613).
+- [ ] Confirmar si 273 cursos únicos es la entrega completa.
 - [ ] Confirmar que la plataforma destino acepta el CSV de 2 columnas.
 
 > Nota: `procesar_megamatriz.py` y `generar_matriz_competencias.py` en la raíz son los scripts originales de la v1 y **no** reflejan estas reglas; la lógica vigente está en `backend/services/`.

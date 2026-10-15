@@ -20,6 +20,7 @@ export interface MegamatrizStats {
   t3Errores: number
   t5Errores: number
   totalFilasT1: number
+  cursosUnicosT1: number
   cursosOmitidos: number
   indicadoresOmitidos: number
   elapsedMs: number
@@ -88,12 +89,21 @@ export interface IndicatorConflict {
   filas: number[]
 }
 
+export interface CourseConflict {
+  idSiga: string
+  catalogo: string
+  campos: string[]
+  filas: number[]
+}
+
 export interface FilePreview {
   hojas: string[]
   faltantes: string[]
   filasPorHoja: Record<string, number>
   indicadores: number
   conflictos: IndicatorConflict[]
+  cursos: number
+  conflictosCursos: CourseConflict[]
 }
 
 export async function previewFile(mainFile: File): Promise<FilePreview> {

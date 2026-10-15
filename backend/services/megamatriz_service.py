@@ -57,6 +57,20 @@ HOJAS: dict[str, tuple[str, ...]] = {
 # Campos que deben coincidir en todas las filas de un mismo ID Indicador
 CAMPOS_INDICADOR = ("Indicador de desempeño", "Inicial", "Progresivo", "Avanzado", "Excelente")
 
+# Columnas de T_1 que van al JSON del curso. T_1 trae una fila por programa que
+# dicta el curso; estas columnas deben coincidir en todas las filas del mismo ID SIGA.
+CAMPOS_CURSO = (
+    "Número de catálogo", "Módulo o espacio académico", "Créditos",
+    "Departamento que oferta el espacio académico", "Tipo de registro",
+    "Aula", "Otro", "Teórico", "Horas teórico-prácticas", "Físico asincrónico",
+    "Virtual sincrónico", "Virtual asincrónico", "Horas prácticas",
+    "Horas de trabajo independiente (HTI)", "Horas totales (HTT)",
+    "Idioma", "Descripción de la asignatura o espacio académico", "nivelFormacion",
+    "EspacioAcademico", "Modalidad", "Metodología de aprendizaje experiencial",
+    "Competencia Certificable", "Descripción de Competencia Certificable",
+    "Clasificador de Módulo", "Presaberes", "Cosaberes",
+) + tuple(c for columnas in RASGOS_MAP.values() for c in columnas)
+
 
 # ── Utilidades ─────────────────────────────────────────────────────────────────
 
@@ -279,6 +293,46 @@ def analizar_indicadores(df_t2: pd.DataFrame) -> dict[str, dict]:
     return conflictos
 
 
+def analizar_cursos(df_t1: pd.DataFrame) -> dict[str, dict]:
+    """
+    Regla: un mismo curso (ID SIGA) debe tener los mismos datos en todas sus filas
+    de T_1 (una por programa). Las diferencias solo de mayúsculas no cuentan.
+    Retorna {id_siga: {"filas": [...], "campos": {campo: {valor: [filas]}}}}
+    solo para los cursos que la incumplen.
+    """
+    columnas = [c for c in CAMPOS_CURSO if c in df_t1.columns]
+    conflictos: dict[str, dict] = {}
+    for id_raw, sub in df_t1.groupby("ID SIGA", sort=False):
+        if len(sub) < 2 or es_vacio_estricto(id_raw):
+            continue
+        campos: dict[str, dict[str, list[int]]] = {}
+        for col in columnas:
+            valores: dict[str, list[int]] = {}
+            vistos: set[str] = set()
+            for idx, v in sub[col].items():
+                texto = limpiar_str(v)
+                clave = texto.lower()
+                if clave not in vistos:
+                    vistos.add(clave)
+                    valores[texto] = []
+                valores[next(t for t in valores if t.lower() == clave)].append(idx + 2)
+            if len(valores) > 1:
+                campos[col] = valores
+        if campos:
+            conflictos[siga_id_a_str(id_raw)] = {"filas": [i + 2 for i in sub.index], "campos": campos}
+    return conflictos
+
+
+def _describir_conflicto_curso(campos: dict[str, dict[str, list[int]]]) -> str:
+    partes = []
+    for col, valores in campos.items():
+        detalle = "; ".join(
+            f"'{(v or '(vacío)')[:40]}' en filas {_listar_filas(f, 5)}" for v, f in valores.items()
+        )
+        partes.append(f"{col} ({detalle})")
+    return " | ".join(partes)
+
+
 # ── Sub-estructuras ─────────────────────────────────────────────────────────────
 
 def _num_conteo(valor) -> int | None:
@@ -495,8 +549,11 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
 
     errores: list[dict] = []
     resultado: dict = {"status": True, "data": {}}
-    procesados = 0
-    cursos_omitidos = 0
+    cursos_omitidos: set[str] = set()
+    cursos_vistos: set[str] = set()
+
+    # Cursos con datos distintos entre programas: se omiten y se reportan una vez
+    conflictos_cursos = analizar_cursos(df_t1)
 
     # IDs con descripción o rúbrica distinta entre filas: se omiten y se reportan una vez
     conflictos = analizar_indicadores(df_t2)
@@ -518,6 +575,27 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
         if es_vacio_estricto(id_siga_raw):
             continue
 
+        # T_1 trae una fila por programa: cada curso se construye una sola vez
+        try:
+            id_siga = siga_id_a_str(id_siga_raw)
+        except (ValueError, TypeError):
+            id_siga = limpiar_str(id_siga_raw)
+        if id_siga in cursos_vistos:
+            continue
+        cursos_vistos.add(id_siga)
+        catalogo = limpiar_str(fila.get("Número de catálogo", ""))
+
+        if id_siga in conflictos_cursos:
+            errores.append({
+                "hoja": hojas["T1"], "fila": fila_num,
+                "error": (
+                    f"Curso {id_siga} ({catalogo}): datos distintos entre programas en "
+                    f"{_describir_conflicto_curso(conflictos_cursos[id_siga]['campos'])} — curso omitido"
+                ),
+            })
+            cursos_omitidos.add(id_siga)
+            continue
+
         dept_nombre = limpiar_str(fila.get("Departamento que oferta el espacio académico", ""))
         dept_codigo = mapa_departamento.get(dept_nombre, "")
         if not dept_codigo:
@@ -525,10 +603,10 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
                 "hoja": hojas["T1"], "fila": fila_num,
                 "error": (
                     f"Departamento '{dept_nombre or '(vacío)'}' no está en la Tabla de equivalencias "
-                    f"— curso {limpiar_str(fila.get('Número de catálogo', ''))} omitido"
+                    f"— curso {id_siga} ({catalogo}) omitido"
                 ),
             })
-            cursos_omitidos += 1
+            cursos_omitidos.add(id_siga)
             continue
 
         try:
@@ -537,7 +615,6 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
                 mapa_programa, ids_omitidos, hojas, errores,
             )
             resultado["data"][registro["idCursoSiga"]] = registro
-            procesados += 1
         except KeyError as exc:
             # Error real: columna no encontrada
             errores.append({
@@ -576,14 +653,15 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
         "resultado": resultado,
         "errores": errores,
         "stats": {
-            "procesados": procesados,
+            "procesados": len(resultado["data"]),
             "totalErrores": len(errores),
             "t1Errores": sum(1 for e in errores if e["hoja"] == hojas["T1"]),
             "t2Errores": sum(1 for e in errores if e["hoja"] == hojas["T2"]),
             "t3Errores": sum(1 for e in errores if e["hoja"] == hojas["T3"]),
             "t5Errores": sum(1 for e in errores if e["hoja"] == hojas["T5"]),
             "totalFilasT1": len(df_t1),
-            "cursosOmitidos": cursos_omitidos,
+            "cursosUnicosT1": len(cursos_vistos),
+            "cursosOmitidos": len(cursos_omitidos),
             "indicadoresOmitidos": len(ids_omitidos),
             "elapsedMs": round(elapsed_ms, 1),
         },
@@ -602,7 +680,21 @@ def previsualizar(main_bytes: bytes) -> dict:
     hojas, faltantes = resolver_hojas(sheets)
     filas = {nombre: len(quitar_encabezados_repetidos(sheets[nombre])) for nombre in hojas.values()}
     indicadores = 0
+    cursos = 0
     conflictos: list[dict] = []
+    conflictos_cursos: list[dict] = []
+    if "T1" in hojas:
+        df_t1 = quitar_encabezados_repetidos(sheets[hojas["T1"]])
+        if "ID SIGA" in df_t1.columns:
+            cursos = int(df_t1["ID SIGA"].dropna().nunique())
+            for id_siga, info in analizar_cursos(df_t1).items():
+                fila0 = info["filas"][0] - 2
+                conflictos_cursos.append({
+                    "idSiga": id_siga,
+                    "catalogo": limpiar_str(df_t1.loc[fila0, "Número de catálogo"]) if fila0 in df_t1.index else "",
+                    "campos": list(info["campos"]),
+                    "filas": info["filas"],
+                })
     if "T2" in hojas:
         df_t2 = quitar_encabezados_repetidos(sheets[hojas["T2"]])
         if COL_ID_INDICADOR in df_t2.columns:
@@ -619,4 +711,6 @@ def previsualizar(main_bytes: bytes) -> dict:
         "filasPorHoja": filas,
         "indicadores": indicadores,
         "conflictos": conflictos,
+        "cursos": cursos,
+        "conflictosCursos": conflictos_cursos,
     }

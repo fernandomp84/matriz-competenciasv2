@@ -116,6 +116,8 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
 }) {
   const ok = preview.faltantes.length === 0
   const conflictos = preview.conflictos
+  const conflictosCursos = preview.conflictosCursos
+  const hayConflictos = conflictos.length > 0 || conflictosCursos.length > 0
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card overflow-hidden">
@@ -145,7 +147,7 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
             <CheckCircle2 className="w-5 h-5 text-brand-500 shrink-0" />
             <div>
               <p className="text-sm font-semibold text-brand-700">
-                Hojas requeridas encontradas — {preview.indicadores} indicadores distintos
+                Hojas requeridas encontradas — {preview.cursos} cursos únicos · {preview.indicadores} indicadores distintos
               </p>
               <p className="text-xs text-brand-500 mt-0.5">
                 {Object.entries(preview.filasPorHoja).map(([h, n]) => `${h}: ${n} filas`).join(' · ')}
@@ -163,6 +165,15 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
             </div>
           </div>
         )}
+        {ok && conflictosCursos.length > 0 && (
+          <div className="flex items-start gap-2.5 p-3 bg-oro-50 border border-oro-200 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-oro-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-oro-800">
+              <strong>{conflictosCursos.length} curso{conflictosCursos.length !== 1 ? 's' : ''} se omitirá{conflictosCursos.length !== 1 ? 'n' : ''}:</strong> un
+              mismo curso (ID SIGA) debe tener los mismos datos en todas sus filas de T_1 (una por programa). Unifícalos para incluirlos.
+            </p>
+          </div>
+        )}
         {ok && conflictos.length > 0 && (
           <div className="flex items-start gap-2.5 p-3 bg-oro-50 border border-oro-200 rounded-xl">
             <AlertCircle className="w-4 h-4 text-oro-500 shrink-0 mt-0.5" />
@@ -174,7 +185,33 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
         )}
       </div>
 
-      {/* Tabla de conflictos */}
+      {/* Tabla de cursos en conflicto */}
+      {ok && conflictosCursos.length > 0 && (
+        <div className="overflow-x-auto max-h-72 overflow-y-auto border-b border-brand-100">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0">
+              <tr style={{ backgroundColor: '#00205B' }}>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-white uppercase tracking-wide w-40">Curso (ID SIGA)</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-white uppercase tracking-wide">Campos que difieren</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-white uppercase tracking-wide">Filas en T_1</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-brand-100">
+              {conflictosCursos.map((c) => (
+                <tr key={c.idSiga} className="even:bg-brand-50/60 hover:bg-brand-100/60 transition-colors">
+                  <td className="px-5 py-3 font-mono font-semibold text-brand-700 whitespace-nowrap">
+                    {c.idSiga}<span className="block text-xs font-normal text-slate-500">{c.catalogo}</span>
+                  </td>
+                  <td className="px-5 py-3 text-slate-700">{c.campos.join(', ')}</td>
+                  <td className="px-5 py-3 text-slate-500 font-mono text-xs">{listarFilas(c.filas)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Tabla de indicadores en conflicto */}
       {ok && conflictos.length > 0 && (
         <div className="overflow-x-auto max-h-72 overflow-y-auto">
           <table className="w-full text-sm">
@@ -202,7 +239,7 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
       <div className="px-6 py-4 border-t border-brand-100 flex items-center justify-between bg-slate-50/50">
         <p className="text-xs text-slate-500">
           {!ok ? 'Corrige el archivo y vuelve a cargarlo.'
-            : conflictos.length > 0 ? 'Puedes procesar ahora; los indicadores en conflicto quedarán en el reporte de errores.'
+            : hayConflictos ? 'Puedes procesar ahora; los cursos e indicadores en conflicto quedarán en el reporte de errores.'
             : 'Todo listo para procesar.'}
         </p>
         <button onClick={onConfirm} disabled={!ok} className="btn-primary">
@@ -315,8 +352,11 @@ export default function Procesar() {
       setPhase('preview')
       if (preview.faltantes.length > 0) {
         toast('Faltan hojas en el archivo', { type: 'error', message: preview.faltantes.join(', ') })
-      } else if (preview.conflictos.length > 0) {
-        toast(`${preview.conflictos.length} indicadores en conflicto`, { type: 'warning', message: 'Se omitirán al procesar.' })
+      } else if (preview.conflictos.length > 0 || preview.conflictosCursos.length > 0) {
+        toast(
+          `${preview.conflictosCursos.length} cursos y ${preview.conflictos.length} indicadores en conflicto`,
+          { type: 'warning', message: 'Se omitirán al procesar.' },
+        )
       }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? (err as Error)?.message ?? 'Error desconocido'
@@ -497,7 +537,7 @@ export default function Procesar() {
                 icon={Shield}
                 label="Cursos omitidos"
                 value={megaResult.stats.cursosOmitidos}
-                sub="Departamento sin equivalencia"
+                sub="Sin equivalencia o datos distintos entre programas"
                 color={megaResult.stats.cursosOmitidos > 0 ? 'amber' : 'slate'}
               />
               <StatsCard

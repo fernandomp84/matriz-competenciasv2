@@ -34,28 +34,29 @@ export default function Dashboard() {
     <motion.div {...fade}>
 
       {/* ── Hero header ─────────────────────────────────────────────────────── */}
-      <div className="relative rounded-2xl overflow-hidden mb-8 p-8" style={{ background: 'linear-gradient(135deg, #11225a 0%, #1e3a88 60%, #2f508e 100%)' }}>
+      <div className="relative rounded-2xl overflow-hidden mb-8 p-8" style={{ backgroundColor: '#00205B' }}>
         {/* Patrón decorativo */}
-        <div className="absolute inset-0 opacity-5" style={{
+        <div className="absolute inset-0 opacity-[0.07]" style={{
           backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
           backgroundSize: '32px 32px'
         }} />
         <div className="relative">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-white/60 text-sm font-medium mb-1 uppercase tracking-widest">
+              <p className="text-brand-200 text-xs font-semibold mb-2 uppercase tracking-widest">
                 Sistema de gestión
               </p>
-              <h1 className="text-3xl font-bold text-white leading-tight">
-                Matriz de Competencias <span className="text-white/60 text-xl font-semibold">v2</span>
+              <h1 className="font-display text-3xl sm:text-4xl font-bold text-white leading-tight">
+                Matriz de Competencias <span className="text-brand-200 text-xl font-light">v2</span>
               </h1>
-              <p className="mt-2 text-white/70 text-sm leading-relaxed max-w-xl">
+              <div className="mt-3 w-16 h-1 rounded-full bg-crema" />
+              <p className="mt-4 text-white/90 text-sm leading-relaxed max-w-xl">
                 Herramienta de procesamiento para la Megamatriz (Omnia.xlsx). Genera automáticamente el JSON estructurado y la Matriz de Competencias CSV.
               </p>
             </div>
             <div className="hidden md:flex flex-col items-end gap-2 shrink-0">
               <div className="text-right">
-                <p className="text-white/50 text-xs">Última actualización</p>
+                <p className="text-brand-200 text-xs">Última actualización</p>
                 <p className="text-white text-sm font-medium">
                   {lastMega ? new Date(lastMega.date).toLocaleDateString('es-CO', { dateStyle: 'medium' }) : 'Sin datos'}
                 </p>
@@ -103,7 +104,7 @@ export default function Dashboard() {
       <div className="card mb-8">
         <div className="card-header">
           <div className="w-1 h-4 rounded-full bg-brand-700" />
-          <h2 className="text-sm font-semibold text-brand-700">Flujo de procesamiento</h2>
+          <h2 className="text-base font-semibold text-brand-700">Flujo de procesamiento</h2>
         </div>
         <div className="card-body">
           <div className="flex items-center gap-3 flex-wrap">
@@ -132,7 +133,7 @@ export default function Dashboard() {
               <ArrowRight className="w-4 h-4" />
             </div>
 
-            <div className="px-4 py-3 rounded-xl bg-emerald-600 text-white text-center">
+            <div className="px-4 py-3 rounded-xl bg-brand-500 text-white text-center">
               <p className="text-xs font-bold">Paso 2</p>
               <p className="text-xs opacity-80 mt-0.5">Matriz_Competencias.csv</p>
             </div>
@@ -158,7 +159,7 @@ export default function Dashboard() {
         className="w-full card p-6 text-left hover:shadow-lg transition-all duration-200 group mb-8"
       >
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: '#11225a' }}>
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: '#00205B' }}>
             <Layers className="w-6 h-6 text-white" />
           </div>
           <div className="flex-1">
@@ -187,7 +188,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="card-header">
             <div className="w-1 h-4 rounded-full bg-brand-700" />
-            <h2 className="text-sm font-semibold text-brand-700">Historial de procesamiento</h2>
+            <h2 className="text-base font-semibold text-brand-700">Historial de procesamiento</h2>
             <button
               onClick={() => { localStorage.removeItem('processingHistory'); setHistory([]) }}
               className="ml-auto text-xs text-slate-400 hover:text-red-500 transition-colors"
@@ -195,11 +196,11 @@ export default function Dashboard() {
               Limpiar
             </button>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-brand-100">
             {history.slice().reverse().slice(0, 8).map((item, i) => (
               <div key={i} className="px-6 py-3.5 flex items-center justify-between hover:bg-slate-50/70 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${item.type === 'megamatriz' ? 'bg-brand-700' : 'bg-emerald-500'}`} />
+                  <div className={`w-2 h-2 rounded-full ${item.type === 'megamatriz' ? 'bg-brand-700' : 'bg-brand-500'}`} />
                   <div>
                     <p className="text-sm font-semibold text-slate-800">{item.filename}</p>
                     <p className="text-xs text-slate-400 mt-0.5">

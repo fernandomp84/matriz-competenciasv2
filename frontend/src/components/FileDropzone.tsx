@@ -36,7 +36,7 @@ export default function FileDropzone({ label, accept, file, onChange, hint, disa
   if (file) {
     return (
       <div className="flex items-center gap-4 p-4 bg-brand-50 border-2 border-brand-200 rounded-xl">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: '#11225a' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: '#00205B' }}>
           <FileCheck className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
@@ -46,7 +46,8 @@ export default function FileDropzone({ label, accept, file, onChange, hint, disa
         {!disabled && (
           <button
             onClick={() => onChange(null)}
-            className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors shadow-sm"
+            aria-label="Quitar archivo"
+            className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-red-600 hover:border-red-200 transition-colors shadow-sm"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -68,7 +69,7 @@ export default function FileDropzone({ label, accept, file, onChange, hint, disa
         'transition-all duration-200 cursor-pointer',
         dragging
           ? 'border-brand-400 bg-brand-50 scale-[1.01]'
-          : 'border-slate-200 bg-slate-50/50 hover:border-brand-300 hover:bg-brand-50/40',
+          : 'border-brand-200 bg-brand-50/50 hover:border-brand-400 hover:bg-brand-50',
         disabled ? 'opacity-50 cursor-not-allowed' : '',
       ].join(' ')}
     >

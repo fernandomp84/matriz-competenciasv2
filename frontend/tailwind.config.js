@@ -4,28 +4,59 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        /* Cuerpo: Libre Franklin (autoalojada en /public/fonts por la CSP) */
+        sans: ['"Libre Franklin"', '"Segoe UI"', 'system-ui', '-apple-system', 'Arial', 'sans-serif'],
+        /* Títulos: Publico Banner (licenciada) con fallback Georgia */
+        display: ['"Publico Banner"', 'Georgia', '"Times New Roman"', 'serif'],
       },
       colors: {
-        /* Paleta oficial Universidad de La Sabana */
+        /* Guía oficial de Marca UniSabana — variante A */
         brand: {
-          50:  '#eef1f8',
-          100: '#d5ddf0',
-          200: '#adbae1',
-          300: '#7d92cc',
-          400: '#546eb7',
-          500: '#3653a0',
-          600: '#1e3a88',
-          700: '#11225a', /* color institucional exacto del logo */
-          800: '#0d1a47',
-          900: '#081133',
-          950: '#04091f',
+          50:  '#ECF1F8', /* tarjeta / fondo suave */
+          100: '#DCE5F3', /* Pantone 2707 — azul pálido */
+          200: '#98B1D3', /* Pantone 292 — azul claro */
+          300: '#98B1D3',
+          400: '#003A86', /* Pantone 286 — azul medio */
+          500: '#003A86',
+          600: '#003A86',
+          700: '#00205B', /* Pantone 281 — azul institucional (rector) */
+          800: '#001A4A',
+          900: '#00133A',
+          950: '#000D29',
         },
-        sabana: {
-          navy:  '#11225a',
-          blue:  '#1e3a88',
-          light: '#eef1f8',
-          gold:  '#c8972a',
+        crema: '#FAF3DC',   /* Pantone 7499 — fondo de soporte, con moderación */
+        /* Oro: acento/aviso puntual (sobre crema, texto oscuro) */
+        oro: {
+          50:  '#FAF3DC',
+          100: '#F3E8C4',
+          200: '#D9C99B',
+          500: '#89764B',
+          600: '#89764B',
+          700: '#6B5C37',
+          800: '#00205B',
+        },
+        /* Rojo de criticidad: único rojo permitido */
+        red: {
+          50:  '#FBEFF1',
+          100: '#F5D9DD',
+          200: '#E3A9B1',
+          500: '#A6192E',
+          600: '#A6192E',
+          700: '#8A1527',
+          800: '#6E1020',
+        },
+        /* Grises de marca (cuerpo #5A606C, tintas Black 90/70) */
+        slate: {
+          50:  '#F5F8FC',
+          100: '#ECF1F8',
+          200: '#DCE5F3',
+          300: '#B3B3B3',
+          400: '#5A606C',
+          500: '#5A606C',
+          600: '#4D4D4D',
+          700: '#333333',
+          800: '#1A1A1A',
+          900: '#1A1A1A',
         },
       },
       animation: {

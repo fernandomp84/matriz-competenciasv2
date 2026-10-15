@@ -3,17 +3,17 @@ import { AlertCircle, CheckCircle2, Info, X, AlertTriangle } from 'lucide-react'
 import { useToast, type Toast } from '../hooks/useToast'
 
 const icons = {
-  success: <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />,
+  success: <CheckCircle2 className="w-4 h-4 text-brand-400 shrink-0" />,
   error:   <AlertCircle  className="w-4 h-4 text-red-500 shrink-0" />,
-  warning: <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />,
-  info:    <Info         className="w-4 h-4 text-brand-500 shrink-0" />,
+  warning: <AlertTriangle className="w-4 h-4 text-oro-500 shrink-0" />,
+  info:    <Info         className="w-4 h-4 text-brand-400 shrink-0" />,
 }
 
 const borders = {
-  success: 'border-l-emerald-500',
+  success: 'border-l-brand-500',
   error:   'border-l-red-500',
-  warning: 'border-l-amber-500',
-  info:    'border-l-brand-500',
+  warning: 'border-l-oro-500',
+  info:    'border-l-brand-400',
 }
 
 function ToastItem({ toast }: { toast: Toast }) {
@@ -24,7 +24,7 @@ function ToastItem({ toast }: { toast: Toast }) {
       initial={{ opacity: 0, y: 16, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
-      className={`flex items-start gap-3 w-80 bg-white rounded-xl shadow-lg border border-slate-200 border-l-4 px-4 py-3.5 ${borders[toast.type]}`}
+      className={`flex items-start gap-3 w-80 bg-white rounded-xl shadow-lg border border-brand-100 border-l-4 px-4 py-3.5 ${borders[toast.type]}`}
     >
       {icons[toast.type]}
       <div className="flex-1 min-w-0">

@@ -16,18 +16,18 @@ const navItems: NavItem[] = [
 ]
 
 export default function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches)
 
   return (
     <motion.aside
       animate={{ width: collapsed ? 72 : 260 }}
       transition={{ duration: 0.25, ease: 'easeInOut' }}
       className="relative flex flex-col overflow-hidden shrink-0"
-      style={{ backgroundColor: '#11225a' }}
+      style={{ backgroundColor: '#00205B' }}
     >
       {/* ── Logo área ─────────────────────────────────────────────────────── */}
       <div
-        className="flex items-center justify-center px-4 py-5 shrink-0 overflow-hidden"
+        className="flex items-center justify-center px-6 py-7 shrink-0 overflow-hidden"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.10)' }}
       >
         {collapsed ? (
@@ -49,9 +49,9 @@ export default function Sidebar() {
             className="w-full flex items-center justify-center"
           >
             <img
-              src="/logo.svg"
-              alt="Logo"
-              className="h-14 w-auto object-contain"
+              src="/logo-unisabana-blanco.svg"
+              alt="Universidad de La Sabana"
+              className="h-16 w-auto object-contain"
             />
           </motion.div>
         )}
@@ -66,7 +66,7 @@ export default function Sidebar() {
             exit={{ opacity: 0 }}
             className="px-5 pt-6 pb-1"
           >
-            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#98B1D3' }}>
               Menú principal
             </p>
           </motion.div>
@@ -84,7 +84,7 @@ export default function Sidebar() {
                 'flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-150 group relative',
                 isActive
                   ? 'bg-white/15 text-white'
-                  : 'text-white/60 hover:bg-white/10 hover:text-white',
+                  : 'text-white/75 hover:bg-white/10 hover:text-white',
               ].join(' ')
             }
           >
@@ -94,7 +94,7 @@ export default function Sidebar() {
                 {isActive && (
                   <motion.div
                     layoutId="activeNav"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-white"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-brand-200"
                   />
                 )}
                 <div
@@ -114,7 +114,7 @@ export default function Sidebar() {
                       className="overflow-hidden"
                     >
                       <p className="text-sm font-semibold whitespace-nowrap leading-tight">{label}</p>
-                      <p className="text-xs whitespace-nowrap leading-tight mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                      <p className="text-xs whitespace-nowrap leading-tight mt-0.5" style={{ color: '#98B1D3' }}>
                         {sub}
                       </p>
                     </motion.div>
@@ -131,7 +131,8 @@ export default function Sidebar() {
         <button
           onClick={() => setCollapsed((c) => !c)}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 hover:bg-white/10"
-          style={{ color: 'rgba(255,255,255,0.45)' }}
+          style={{ color: '#98B1D3' }}
+          aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
           title={collapsed ? 'Expandir' : 'Colapsar'}
         >
           <motion.div animate={{ rotate: collapsed ? 180 : 0 }} transition={{ duration: 0.25 }}>

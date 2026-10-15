@@ -52,14 +52,14 @@ function EquivSection({ status, onUpdated }: { status: EquivStatus; onUpdated: (
   }
 
   return (
-    <div className={`card overflow-hidden ${!status.configured ? 'border-amber-200' : ''}`}>
+    <div className={`card overflow-hidden ${!status.configured ? 'border-oro-200' : ''}`}>
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${status.configured ? 'bg-brand-50' : 'bg-amber-50'}`}>
-            <Settings className={`w-4 h-4 ${status.configured ? 'text-brand-700' : 'text-amber-600'}`} />
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${status.configured ? 'bg-brand-50' : 'bg-oro-50'}`}>
+            <Settings className={`w-4 h-4 ${status.configured ? 'text-brand-700' : 'text-oro-600'}`} />
           </div>
           <div className="text-left">
             <p className="text-sm font-semibold text-slate-800">Tabla de equivalencias</p>
@@ -80,9 +80,9 @@ function EquivSection({ status, onUpdated }: { status: EquivStatus; onUpdated: (
             exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-6 pb-5 pt-1 space-y-4 border-t border-slate-100">
+            <div className="px-6 pb-5 pt-1 space-y-4 border-t border-brand-100">
               {!status.configured && (
-                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+                <div className="p-3.5 bg-oro-50 border border-oro-200 rounded-xl text-sm text-oro-800">
                   Sube el archivo <strong>Tabla de equivalencias.xlsx</strong> para activar el procesamiento.
                 </div>
               )}
@@ -120,7 +120,7 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-brand-100 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center">
             <Eye className="w-4 h-4 text-brand-700" />
@@ -139,15 +139,15 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
       </div>
 
       {/* Estado de hojas */}
-      <div className="px-6 py-4 border-b border-slate-100 space-y-3">
+      <div className="px-6 py-4 border-b border-brand-100 space-y-3">
         {ok ? (
-          <div className="flex items-center gap-3 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <div className="flex items-center gap-3 p-3.5 bg-brand-50 border border-brand-200 rounded-xl">
+            <CheckCircle2 className="w-5 h-5 text-brand-500 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-emerald-800">
+              <p className="text-sm font-semibold text-brand-700">
                 Hojas requeridas encontradas — {preview.indicadores} indicadores distintos
               </p>
-              <p className="text-xs text-emerald-600 mt-0.5">
+              <p className="text-xs text-brand-500 mt-0.5">
                 {Object.entries(preview.filasPorHoja).map(([h, n]) => `${h}: ${n} filas`).join(' · ')}
               </p>
             </div>
@@ -164,9 +164,9 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
           </div>
         )}
         {ok && conflictos.length > 0 && (
-          <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800">
+          <div className="flex items-start gap-2.5 p-3 bg-oro-50 border border-oro-200 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-oro-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-oro-800">
               <strong>{conflictos.length} indicador{conflictos.length !== 1 ? 'es' : ''} se omitirá{conflictos.length !== 1 ? 'n' : ''}:</strong> un
               mismo ID Indicador debe tener la misma descripción y rúbrica en todo el archivo. Corrígelos en la hoja T_2 para incluirlos.
             </p>
@@ -179,15 +179,15 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
         <div className="overflow-x-auto max-h-72 overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0">
-              <tr style={{ backgroundColor: '#11225a' }}>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-white/80 uppercase tracking-wide w-32">ID Indicador</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-white/80 uppercase tracking-wide">Campos que difieren</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-white/80 uppercase tracking-wide">Filas en T_2</th>
+              <tr style={{ backgroundColor: '#00205B' }}>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-white uppercase tracking-wide w-32">ID Indicador</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-white uppercase tracking-wide">Campos que difieren</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-white uppercase tracking-wide">Filas en T_2</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-brand-100">
               {conflictos.map((c) => (
-                <tr key={c.id} className="hover:bg-brand-50/40 transition-colors">
+                <tr key={c.id} className="even:bg-brand-50/60 hover:bg-brand-100/60 transition-colors">
                   <td className="px-5 py-3 font-mono font-semibold text-brand-700 whitespace-nowrap">{c.id}</td>
                   <td className="px-5 py-3 text-slate-700">{c.campos.join(', ')}</td>
                   <td className="px-5 py-3 text-slate-500 font-mono text-xs">{listarFilas(c.filas)}</td>
@@ -199,7 +199,7 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
       )}
 
       {/* Acciones */}
-      <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div className="px-6 py-4 border-t border-brand-100 flex items-center justify-between bg-slate-50/50">
         <p className="text-xs text-slate-500">
           {!ok ? 'Corrige el archivo y vuelve a cargarlo.'
             : conflictos.length > 0 ? 'Puedes procesar ahora; los indicadores en conflicto quedarán en el reporte de errores.'
@@ -240,13 +240,13 @@ function StepIndicator({ steps, megaStats, matrixStats }: {
     <div className="card overflow-hidden">
       <div className="card-header">
         <div className="w-1 h-4 rounded-full bg-brand-700" />
-        <h3 className="text-sm font-semibold text-brand-700">Progreso del procesamiento</h3>
+        <h3 className="text-base font-semibold text-brand-700">Progreso del procesamiento</h3>
       </div>
       {items.map(({ key, num, label, sub }, idx) => {
         const state = steps[key]
         return (
           <div key={key}>
-            {idx > 0 && <div className="mx-6 border-t border-slate-100" />}
+            {idx > 0 && <div className="mx-6 border-t border-brand-100" />}
             <div className="flex items-center gap-4 px-6 py-4">
               <div className="shrink-0">
                 {state === 'running' ? (
@@ -254,8 +254,8 @@ function StepIndicator({ steps, megaStats, matrixStats }: {
                     <Loader2 className="w-4 h-4 text-brand-700 animate-spin" />
                   </div>
                 ) : state === 'done' ? (
-                  <div className="w-9 h-9 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <div className="w-9 h-9 rounded-full bg-brand-50 border-2 border-brand-200 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-brand-500" />
                   </div>
                 ) : state === 'error' ? (
                   <div className="w-9 h-9 rounded-full bg-red-50 border-2 border-red-200 flex items-center justify-center">
@@ -269,7 +269,7 @@ function StepIndicator({ steps, megaStats, matrixStats }: {
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-semibold ${
-                  state === 'done' ? 'text-emerald-700'
+                  state === 'done' ? 'text-brand-700'
                   : state === 'running' ? 'text-brand-700'
                   : state === 'error' ? 'text-red-700'
                   : 'text-slate-400'}`}>{label}</p>
@@ -386,7 +386,7 @@ export default function Procesar() {
         <div className="card mb-5">
           <div className="card-header">
             <div className="w-1 h-4 rounded-full bg-brand-700" />
-            <h2 className="text-sm font-semibold text-brand-700">Archivo de entrada</h2>
+            <h2 className="text-base font-semibold text-brand-700">Archivo de entrada</h2>
           </div>
           <div className="card-body space-y-4">
             <FileDropzone
@@ -399,9 +399,9 @@ export default function Procesar() {
             />
 
             {!equivStatus.configured && (
-              <div className="flex items-center gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
-                <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
-                <p className="text-sm text-amber-800">Configura primero la tabla de equivalencias.</p>
+              <div className="flex items-center gap-2.5 p-3.5 bg-oro-50 border border-oro-200 rounded-xl">
+                <AlertCircle className="w-4 h-4 text-oro-500 shrink-0" />
+                <p className="text-sm text-oro-800">Configura primero la tabla de equivalencias.</p>
               </div>
             )}
 
@@ -415,7 +415,7 @@ export default function Procesar() {
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-1 border-t border-slate-100 mt-2">
+            <div className="flex items-center justify-between pt-1 border-t border-brand-100 mt-2">
               <p className="text-xs text-slate-400">
                 {!equivStatus.configured ? 'Configura las equivalencias primero'
                   : !mainFile ? 'Selecciona el archivo Excel'
@@ -464,12 +464,12 @@ export default function Procesar() {
             <StepIndicator steps={steps} megaStats={megaResult.stats} matrixStats={matrixResult.stats} />
 
             {/* Banner éxito */}
-            <div className="flex items-center justify-between p-4 rounded-2xl border border-emerald-200 bg-emerald-50">
+            <div className="flex items-center justify-between p-4 rounded-2xl border border-brand-200 bg-brand-50">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                <p className="text-sm font-semibold text-emerald-800">Ambos pasos completados exitosamente</p>
+                <CheckCircle2 className="w-5 h-5 text-brand-500" />
+                <p className="text-sm font-semibold text-brand-700">Ambos pasos completados exitosamente</p>
               </div>
-              <button onClick={handleReset} className="btn-ghost text-emerald-700 hover:bg-emerald-100 text-sm">
+              <button onClick={handleReset} className="btn-ghost text-brand-700 hover:bg-brand-100 text-sm">
                 <RefreshCw className="w-3.5 h-3.5" />Nuevo archivo
               </button>
             </div>
@@ -518,21 +518,21 @@ export default function Procesar() {
               <div className="card overflow-hidden">
                 <div className="card-header">
                   <div className="w-1 h-4 rounded-full bg-brand-700" />
-                  <h3 className="text-sm font-semibold text-brand-700">Vista previa — Matriz de Competencias</h3>
+                  <h3 className="text-base font-semibold text-brand-700">Vista previa — Matriz de Competencias</h3>
                   <span className="ml-auto text-xs text-slate-400">Primeras 8 filas</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr style={{ backgroundColor: '#11225a' }}>
+                      <tr style={{ backgroundColor: '#00205B' }}>
                         {['ID Indicador', 'Descripción'].map((h) => (
-                          <th key={h} className="text-left px-5 py-3 font-semibold text-white/80 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                          <th key={h} className="text-left px-5 py-3 font-semibold text-white uppercase tracking-wide whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-brand-100">
                       {matrixResult.filas.slice(0, 8).map((row, i) => (
-                        <tr key={i} className="hover:bg-brand-50/40 transition-colors">
+                        <tr key={i} className="even:bg-brand-50/60 hover:bg-brand-100/60 transition-colors">
                           <td className="px-5 py-3 font-mono font-semibold text-brand-700 whitespace-nowrap">{row['ID Indicador']}</td>
                           <td className="px-5 py-3 text-slate-600 max-w-[520px] truncate">{row['Descripción']}</td>
                         </tr>
@@ -540,7 +540,7 @@ export default function Procesar() {
                     </tbody>
                   </table>
                   {matrixResult.filas.length > 8 && (
-                    <div className="px-5 py-3 text-center text-xs text-slate-400 border-t border-slate-100 bg-slate-50">
+                    <div className="px-5 py-3 text-center text-xs text-slate-400 border-t border-brand-100 bg-slate-50">
                       +{matrixResult.filas.length - 8} indicadores adicionales en el CSV
                     </div>
                   )}
@@ -552,7 +552,7 @@ export default function Procesar() {
             <div className="card p-6">
               <div className="flex items-center gap-2 mb-5">
                 <div className="w-1 h-4 rounded-full bg-brand-700" />
-                <h3 className="text-sm font-semibold text-brand-700">Archivos generados</h3>
+                <h3 className="text-base font-semibold text-brand-700">Archivos generados</h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button onClick={() => { downloadCSV(matrixResult.csvContent, 'Matriz_Competencias.csv'); toast('CSV descargado', { type: 'success' }) }} className="btn-primary justify-start gap-3 py-3.5">

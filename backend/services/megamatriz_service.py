@@ -337,6 +337,22 @@ def _describir_conflicto_curso(campos: dict[str, dict[str, list[int]]]) -> str:
     return " | ".join(partes)
 
 
+def cursos_con_indicadores_en_conflicto(df_t2: pd.DataFrame, ids_conflicto) -> dict[str, list[str]]:
+    """{número de catálogo: [IDs en conflicto que usa]} para los cursos afectados."""
+    ids = set(ids_conflicto)
+    mapa: dict[str, list[str]] = {}
+    if not ids or COL_ID_INDICADOR not in df_t2.columns:
+        return mapa
+    for _, row in df_t2.iterrows():
+        id_ind = id_indicador_a_str(row.get(COL_ID_INDICADOR, ""))
+        if id_ind in ids:
+            catalogo = limpiar_str(row.get(COL_CATALOGO, ""))
+            lista = mapa.setdefault(catalogo, [])
+            if id_ind not in lista:
+                lista.append(id_ind)
+    return mapa
+
+
 # ── Sub-estructuras ─────────────────────────────────────────────────────────────
 
 def _num_conteo(valor) -> int | None:
@@ -595,6 +611,8 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
             ),
         })
     ids_omitidos = set(conflictos)
+    # Cursos que usan algún indicador en conflicto: también se omiten
+    cursos_afectados = cursos_con_indicadores_en_conflicto(df_t2, ids_omitidos)
 
     for idx, fila in df_t1.iterrows():
         fila_num = idx + 2
@@ -620,6 +638,17 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
                 "error": (
                     f"Curso {id_siga} ({catalogo}): datos distintos entre programas en "
                     f"{_describir_conflicto_curso(conflictos_cursos[id_siga]['campos'])} — curso omitido"
+                ),
+            })
+            cursos_omitidos.add(id_siga)
+            continue
+
+        if catalogo in cursos_afectados:
+            errores.append({
+                "hoja": hojas["T1"], "fila": fila_num,
+                "error": (
+                    f"Curso {id_siga} ({catalogo}): usa indicadores con descripción o rúbrica distinta "
+                    f"({', '.join(sorted(cursos_afectados[catalogo]))}) — curso omitido"
                 ),
             })
             cursos_omitidos.add(id_siga)
@@ -711,6 +740,7 @@ def previsualizar(main_bytes: bytes) -> dict:
     filas = {nombre: len(quitar_encabezados_repetidos(sheets[nombre])) for nombre in hojas.values()}
     indicadores = 0
     cursos = 0
+    cursos_afectados = 0
     conflictos: list[dict] = []
     conflictos_cursos: list[dict] = []
     if "T1" in hojas:
@@ -731,9 +761,21 @@ def previsualizar(main_bytes: bytes) -> dict:
             indicadores = len({
                 i for i in (id_indicador_a_str(v) for v in df_t2[COL_ID_INDICADOR]) if i
             })
+        analisis = analizar_indicadores(df_t2)
+        afectados = cursos_con_indicadores_en_conflicto(df_t2, analisis)
+        catalogos_t1 = set()
+        if "T1" in hojas:
+            catalogos_t1 = {limpiar_str(v) for v in quitar_encabezados_repetidos(sheets[hojas["T1"]])[COL_CATALOGO]}
+        cursos_por_id: dict[str, list[str]] = {}
+        for cat, ids in afectados.items():
+            if cat in catalogos_t1:
+                for i in ids:
+                    cursos_por_id.setdefault(i, []).append(cat)
+        cursos_afectados = len([c for c in afectados if c in catalogos_t1])
         conflictos = [
-            {"id": id_ind, "campos": info["campos"], "filas": info["filas"]}
-            for id_ind, info in analizar_indicadores(df_t2).items()
+            {"id": id_ind, "campos": info["campos"], "filas": info["filas"],
+             "cursos": sorted(cursos_por_id.get(id_ind, []))}
+            for id_ind, info in analisis.items()
         ]
     return {
         "hojas": [str(h) for h in sheets.keys()],
@@ -743,4 +785,5 @@ def previsualizar(main_bytes: bytes) -> dict:
         "conflictos": conflictos,
         "cursos": cursos,
         "conflictosCursos": conflictos_cursos,
+        "cursosConIndicadorEnConflicto": cursos_afectados,
     }

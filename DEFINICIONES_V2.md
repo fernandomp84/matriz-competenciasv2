@@ -43,6 +43,8 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 **Reglas de validación**
 1. **Mismo ID ⇒ misma descripción y misma rúbrica** (Inicial, Progresivo, Avanzado, Excelente) en todo el archivo.
    Si no se cumple, el indicador **se omite** del JSON y de la matriz y se reporta una vez en el archivo de errores (hoja `T_2`).
+1b. **Los cursos que usan algún indicador en conflicto tampoco se procesan**: se omiten y se reportan (hoja `T_1`) con la lista
+   de IDs en conflicto que usan. La matriz solo incluye indicadores de cursos procesados (definido 2026-10-15).
 2. **Departamento sin equivalencia** en la Tabla de equivalencias ⇒ el **curso se omite** y se reporta (hoja `T_1`).
 2b. **Un curso (ID SIGA) = una entrada.** `T_1` trae una fila por cada programa que dicta el curso; el curso se procesa una sola vez.
    Si sus filas tienen **datos distintos entre programas** en cualquier columna que va al JSON, el **curso se omite**
@@ -71,9 +73,17 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 
 ## Resultado con `Omnia.xlsx` (2026-10-15 07:47) y equivalencias corregidas (2026-10-15 15:51)
 
-- `T_1`: 704 filas (una por programa) = **273 cursos únicos** → **273 procesados**, 0 omitidos.
+- `T_1`: 704 filas (una por programa) = **273 cursos únicos**.
+- 939 IDs de indicador → **28 en conflicto**, usados por **90 cursos** → **183 cursos procesados**, 90 omitidos.
 - 9 cursos con más de un clasificador (p. ej. Cálculo Univariado → `["Campo", "Área"]`).
-- 939 IDs de indicador → 28 omitidos por conflicto → **911 filas** en la matriz.
+- Matriz: **662 indicadores** (solo de cursos procesados, sin los 28 en conflicto).
+- Al corregir los 28 IDs en el Omnia se recuperan los 90 cursos.
+
+## Limpieza de texto
+
+Todos los textos de salida (JSON y CSV) se limpian de caracteres invisibles: espacios especiales (U+00A0, U+2007, U+202F, tab)
+se convierten en espacio normal y los de anchura cero (U+200B, U+200C, U+200D, U+FEFF) se eliminan; saltos de línea → espacio;
+espacios dobles → uno. Con el Omnia actual: 1.041 caracteres invisibles en el Excel → 0 en la salida.
 
 ## Pendientes (dependen de terceros)
 

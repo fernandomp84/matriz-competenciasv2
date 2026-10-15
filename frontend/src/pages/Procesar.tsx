@@ -178,8 +178,11 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
           <div className="flex items-start gap-2.5 p-3 bg-oro-50 border border-oro-200 rounded-xl">
             <AlertCircle className="w-4 h-4 text-oro-500 shrink-0 mt-0.5" />
             <p className="text-xs text-oro-800">
-              <strong>{conflictos.length} indicador{conflictos.length !== 1 ? 'es' : ''} se omitirá{conflictos.length !== 1 ? 'n' : ''}:</strong> un
-              mismo ID Indicador debe tener la misma descripción y rúbrica en todo el archivo. Corrígelos en la hoja T_2 para incluirlos.
+              <strong>
+                {conflictos.length} indicador{conflictos.length !== 1 ? 'es' : ''} y
+                los {preview.cursosConIndicadorEnConflicto} curso{preview.cursosConIndicadorEnConflicto !== 1 ? 's' : ''} que
+                los usan se omitirán:
+              </strong> un mismo ID Indicador debe tener la misma descripción y rúbrica en todo el archivo. Corrígelos en la hoja T_2 para incluirlos.
             </p>
           </div>
         )}
@@ -220,6 +223,7 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-white uppercase tracking-wide w-32">ID Indicador</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-white uppercase tracking-wide">Campos que difieren</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-white uppercase tracking-wide">Filas en T_2</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-white uppercase tracking-wide">Cursos afectados</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-100">
@@ -228,6 +232,7 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
                   <td className="px-5 py-3 font-mono font-semibold text-brand-700 whitespace-nowrap">{c.id}</td>
                   <td className="px-5 py-3 text-slate-700">{c.campos.join(', ')}</td>
                   <td className="px-5 py-3 text-slate-500 font-mono text-xs">{listarFilas(c.filas)}</td>
+                  <td className="px-5 py-3 text-slate-500 font-mono text-xs">{c.cursos.length ? `${c.cursos.length}: ${c.cursos.slice(0, 4).join(', ')}${c.cursos.length > 4 ? '…' : ''}` : '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -537,7 +542,7 @@ export default function Procesar() {
                 icon={Shield}
                 label="Cursos omitidos"
                 value={megaResult.stats.cursosOmitidos}
-                sub="Sin equivalencia o datos distintos entre programas"
+                sub="Indicadores en conflicto, sin equivalencia o datos distintos"
                 color={megaResult.stats.cursosOmitidos > 0 ? 'amber' : 'slate'}
               />
               <StatsCard

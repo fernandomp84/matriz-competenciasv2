@@ -87,6 +87,7 @@ export interface IndicatorConflict {
   id: string
   campos: string[]
   filas: number[]
+  cursos: string[]
 }
 
 export interface CourseConflict {
@@ -104,6 +105,7 @@ export interface FilePreview {
   conflictos: IndicatorConflict[]
   cursos: number
   conflictosCursos: CourseConflict[]
+  cursosConIndicadorEnConflicto: number
 }
 
 export async function previewFile(mainFile: File): Promise<FilePreview> {

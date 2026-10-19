@@ -41,8 +41,8 @@ export interface MegamatrizResult {
 }
 
 export interface MatrixRow {
-  'ID Indicador': string
-  Descripción: string
+  'Short Code': string
+  Description: string
 }
 
 export interface MatrixStats {

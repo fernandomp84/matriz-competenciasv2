@@ -66,7 +66,8 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 
 **Matriz (`Matriz_Competencias.csv`)**
 11. Lista plana: una fila por `ID Indicador` (con sus ceros), ordenada por valor numérico. Sin jerarquía matriz → metacompetencia → RA.
-12. Columnas `ID Indicador` y `Descripción` (texto plano), separadas por `;`, todos los valores entre comillas, UTF-8 con BOM.
+12. Columnas **`Short Code`** (= ID Indicador) y **`Description`** (= Indicador de desempeño), en ese orden, texto plano,
+    separadas por `;`, todos los valores entre comillas, UTF-8 con BOM (nombres definidos 2026-10-19).
 
 **Textos**
 13. Las letras al inicio de las descripciones (`A:`, `C:`, `G:`, `H:`) se dejan tal como vienen.
@@ -85,11 +86,19 @@ Todos los textos de salida (JSON y CSV) se limpian de caracteres invisibles: esp
 se convierten en espacio normal y los de anchura cero (U+200B, U+200C, U+200D, U+FEFF) se eliminan; saltos de línea → espacio;
 espacios dobles → uno. Con el Omnia actual: 1.041 caracteres invisibles en el Excel → 0 en la salida.
 
+## Generar los archivos en local
+
+```
+python scripts/generar_salidas.py "Entrada/Omnia2.xlsx"
+```
+
+Genera en `Salida/`: `salida.json`, `Matriz_Competencias.csv`, `Inconsistencias_ID_Indicador.xlsx` y `Errores_Megamatriz.xlsx`.
+
 ## Pendientes (dependen de terceros)
 
 - [x] Código del departamento "Educación y Desarrollo Infantil" en la Tabla de equivalencias (corregido 2026-10-15).
 - [ ] Corregir en el Omnia los 28 IDs con descripción/rúbrica distinta.
 - [ ] Confirmar si 273 cursos únicos es la entrega completa.
-- [ ] Confirmar que la plataforma destino acepta el CSV de 2 columnas.
+- [x] Columnas del CSV para la plataforma destino: `Short Code`, `Description` (2026-10-19).
 
 > Nota: `procesar_megamatriz.py` y `generar_matriz_competencias.py` en la raíz son los scripts originales de la v1 y **no** reflejan estas reglas; la lógica vigente está en `backend/services/`.

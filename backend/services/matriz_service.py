@@ -84,14 +84,15 @@ def generar_filas(data: dict) -> tuple[list[dict], list[dict]]:
             err(", ".join(cursos[codigo][:5]), "indicadorDesempeno.descripcion",
                 f"ID Indicador {codigo} tiene {len(descs)} descripciones distintas — indicador omitido")
             continue
-        filas.append({"ID Indicador": codigo, "Descripción": next(iter(descs))})
+        filas.append({"Short Code": codigo, "Description": next(iter(descs))})
 
     return filas, errores
 
 
 # ── CSV ─────────────────────────────────────────────────────────────────────────
 
-CAMPOS_CSV = ["ID Indicador", "Descripción"]
+# Short Code = ID Indicador; Description = Indicador de desempeño
+CAMPOS_CSV = ["Short Code", "Description"]
 
 
 def generar_csv_string(filas: list[dict]) -> str:

@@ -570,7 +570,7 @@ export default function Procesar() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr style={{ backgroundColor: '#00205B' }}>
-                        {['ID Indicador', 'Descripción'].map((h) => (
+                        {['Short Code', 'Description'].map((h) => (
                           <th key={h} className="text-left px-5 py-3 font-semibold text-white uppercase tracking-wide whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -578,8 +578,8 @@ export default function Procesar() {
                     <tbody className="divide-y divide-brand-100">
                       {matrixResult.filas.slice(0, 8).map((row, i) => (
                         <tr key={i} className="even:bg-brand-50/60 hover:bg-brand-100/60 transition-colors">
-                          <td className="px-5 py-3 font-mono font-semibold text-brand-700 whitespace-nowrap">{row['ID Indicador']}</td>
-                          <td className="px-5 py-3 text-slate-600 max-w-[520px] truncate">{row['Descripción']}</td>
+                          <td className="px-5 py-3 font-mono font-semibold text-brand-700 whitespace-nowrap">{row['Short Code']}</td>
+                          <td className="px-5 py-3 text-slate-600 max-w-[520px] truncate">{row['Description']}</td>
                         </tr>
                       ))}
                     </tbody>

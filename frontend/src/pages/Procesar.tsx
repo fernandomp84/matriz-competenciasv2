@@ -117,7 +117,9 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
   const ok = preview.faltantes.length === 0
   const conflictos = preview.conflictos
   const conflictosCursos = preview.conflictosCursos
-  const hayConflictos = conflictos.length > 0 || conflictosCursos.length > 0
+  const filasSinId = preview.filasSinId
+  const mismoTexto = preview.indicadoresMismoTexto
+  const hayConflictos = conflictos.length > 0 || conflictosCursos.length > 0 || filasSinId.length > 0
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card overflow-hidden">
@@ -163,6 +165,26 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
                 El archivo debe tener las hojas T_1, T_2, T_3 y T_5.
               </p>
             </div>
+          </div>
+        )}
+        {ok && filasSinId.length > 0 && (
+          <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-800">
+              <strong>{filasSinId.length} fila{filasSinId.length !== 1 ? 's' : ''} de T_2 sin ID Indicador se omitirá{filasSinId.length !== 1 ? 'n' : ''}:</strong>{' '}
+              filas {listarFilas(filasSinId.map((x) => x.fila), 8)} (curso{' '}
+              {Array.from(new Set(filasSinId.map((x) => x.catalogo))).slice(0, 3).join(', ')}). Llena el ID para incluirlas.
+            </p>
+          </div>
+        )}
+        {ok && mismoTexto.length > 0 && (
+          <div className="flex items-start gap-2.5 p-3 bg-brand-50 border border-brand-200 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-brand-700">
+              <strong>Advertencia — {mismoTexto.length} indicador{mismoTexto.length !== 1 ? 'es' : ''} con el mismo texto y IDs distintos</strong>{' '}
+              ({mismoTexto.slice(0, 3).map((m) => m.ids.join(' y ')).join('; ')}{mismoTexto.length > 3 ? '…' : ''}). No se omite nada;
+              revisa si es el mismo indicador. El detalle queda en el reporte.
+            </p>
           </div>
         )}
         {ok && conflictosCursos.length > 0 && (
@@ -556,6 +578,7 @@ export default function Procesar() {
 
             {/* Errores */}
             <ErrorTable errors={megaResult.errores}   title={`Errores de Megamatriz (${megaResult.errores.length})`} />
+            <ErrorTable errors={megaResult.advertencias ?? []} title={`Advertencias (${(megaResult.advertencias ?? []).length})`} />
             <ErrorTable errors={matrixResult.errores} title={`Errores de Matriz (${matrixResult.errores.length})`} />
 
             {/* Vista previa */}

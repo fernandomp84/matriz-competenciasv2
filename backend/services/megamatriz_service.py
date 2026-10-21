@@ -337,6 +337,87 @@ def _describir_conflicto_curso(campos: dict[str, dict[str, list[int]]]) -> str:
     return " | ".join(partes)
 
 
+def filas_sin_id_indicador(df_t2: pd.DataFrame) -> list[dict]:
+    """Filas de T_2 con datos pero sin ID Indicador (no se pueden procesar)."""
+    if COL_ID_INDICADOR not in df_t2.columns:
+        return []
+    filas: list[dict] = []
+    for idx, row in df_t2.iterrows():
+        if id_indicador_a_str(row.get(COL_ID_INDICADOR, "")):
+            continue
+        catalogo = limpiar_str(row.get(COL_CATALOGO, ""))
+        descripcion = limpiar_str(row.get("Indicador de desempeño", ""))
+        if not catalogo and not descripcion:
+            continue  # fila vacía
+        filas.append({
+            "fila": idx + 2,
+            "catalogo": catalogo,
+            "programa": limpiar_str(row.get("Source.Name", "")),
+            "nivel": limpiar_str(row.get("Nivel de logro", "")),
+            "descripcion": descripcion,
+            "codTributacion": limpiar_str(row.get("Cód de Tributación", "")),
+        })
+    return filas
+
+
+def _clave_texto(texto: str) -> str:
+    """Texto comparable: minúsculas, espacios colapsados y sin puntuación final."""
+    t = re.sub(r"\s+", " ", texto.lower()).strip()
+    return re.sub(r"[\s.,;:]+$", "", t)
+
+
+def _orden_id(codigo: str):
+    return (0, int(codigo), "") if codigo.isdigit() else (1, 0, codigo)
+
+
+def indicadores_mismo_texto(df_t2: pd.DataFrame, ids_excluir=()) -> list[dict]:
+    """
+    Advertencia: el mismo 'Indicador de desempeño' con IDs distintos (posible
+    indicador duplicado). Se excluyen los IDs ya en conflicto, que se reportan aparte.
+    Retorna una entrada por texto con el detalle de cada ID.
+    """
+    if COL_ID_INDICADOR not in df_t2.columns:
+        return []
+    excluir = set(ids_excluir)
+    grupos: dict[str, dict] = {}
+    for idx, row in df_t2.iterrows():
+        id_ind = id_indicador_a_str(row.get(COL_ID_INDICADOR, ""))
+        descripcion = limpiar_str(row.get("Indicador de desempeño", ""))
+        if not id_ind or id_ind in excluir or not descripcion:
+            continue
+        grupo = grupos.setdefault(_clave_texto(descripcion), {"descripcion": descripcion, "ids": {}})
+        info = grupo["ids"].setdefault(
+            id_ind, {"filas": [], "cursos": [], "programas": [], "ras": [], "rubricas": set()}
+        )
+        info["filas"].append(idx + 2)
+        for lista, valor in (
+            (info["cursos"], limpiar_str(row.get(COL_CATALOGO, ""))),
+            (info["programas"], limpiar_str(row.get("Source.Name", ""))),
+            (info["ras"], limpiar_str(row.get("Resultados de aprendizaje", ""))),
+        ):
+            if valor and valor not in lista:
+                lista.append(valor)
+        info["rubricas"].add(tuple(limpiar_str(row.get(c, "")) for c in CAMPOS_INDICADOR[1:]))
+
+    resultado: list[dict] = []
+    for grupo in grupos.values():
+        if len(grupo["ids"]) < 2:
+            continue
+        ids = sorted(grupo["ids"], key=_orden_id)
+        infos = [grupo["ids"][i] for i in ids]
+        rubricas = set().union(*(i["rubricas"] for i in infos))
+        ras = {r for i in infos for r in i["ras"]}
+        resultado.append({
+            "descripcion": grupo["descripcion"],
+            "ids": ids,
+            "detalle": {i: {k: grupo["ids"][i][k] for k in ("filas", "cursos", "programas", "ras")} for i in ids},
+            "cursos": sorted({c for i in infos for c in i["cursos"]}),
+            "rubricaIdentica": len(rubricas) == 1,
+            "resultadoAprendizajeIdentico": len(ras) <= 1,
+        })
+    return sorted(resultado, key=lambda g: _orden_id(g["ids"][0]))
+
+
 def cursos_con_indicadores_en_conflicto(df_t2: pd.DataFrame, ids_conflicto) -> dict[str, list[str]]:
     """{número de catálogo: [IDs en conflicto que usa]} para los cursos afectados."""
     ids = set(ids_conflicto)
@@ -611,6 +692,35 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
             ),
         })
     ids_omitidos = set(conflictos)
+
+    # Filas de T_2 sin ID Indicador: no se pueden procesar, se reportan una por una
+    filas_sin_id = filas_sin_id_indicador(df_t2)
+    for fs in filas_sin_id:
+        errores.append({
+            "hoja": hojas["T2"], "fila": fs["fila"],
+            "error": (
+                f"Fila sin ID Indicador (curso {fs['catalogo'] or '(vacío)'}, programa "
+                f"{fs['programa'] or '(vacío)'}, nivel {fs['nivel'] or '(vacío)'}): "
+                f"'{fs['descripcion'][:70]}' — fila omitida"
+            ),
+        })
+
+    # Advertencia (no omite nada): mismo texto de indicador con IDs distintos
+    advertencias: list[dict] = []
+    for g in indicadores_mismo_texto(df_t2, ids_omitidos):
+        partes = " y ".join(
+            f"{i} (filas {_listar_filas(g['detalle'][i]['filas'], 4)})" for i in g["ids"]
+        )
+        advertencias.append({
+            "hoja": hojas["T2"], "fila": g["detalle"][g["ids"][0]]["filas"][0],
+            "error": (
+                f"Mismo indicador de desempeño con IDs distintos: {partes}; "
+                f"rúbrica idéntica: {'Sí' if g['rubricaIdentica'] else 'No'}; "
+                f"resultado de aprendizaje idéntico: {'Sí' if g['resultadoAprendizajeIdentico'] else 'No'}; "
+                f"cursos: {', '.join(g['cursos'])} — revisar si es el mismo indicador"
+            ),
+        })
+
     # Cursos que usan algún indicador en conflicto: también se omiten
     cursos_afectados = cursos_con_indicadores_en_conflicto(df_t2, ids_omitidos)
 
@@ -711,6 +821,7 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
     return {
         "resultado": resultado,
         "errores": errores,
+        "advertencias": advertencias,
         "stats": {
             "procesados": len(resultado["data"]),
             "totalErrores": len(errores),
@@ -720,6 +831,8 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
             "t5Errores": sum(1 for e in errores if e["hoja"] == hojas["T5"]),
             "totalFilasT1": len(df_t1),
             "cursosUnicosT1": len(cursos_vistos),
+            "filasSinId": len(filas_sin_id),
+            "advertencias": len(advertencias),
             "cursosOmitidos": len(cursos_omitidos),
             "indicadoresOmitidos": len(ids_omitidos),
             "elapsedMs": round(elapsed_ms, 1),
@@ -741,6 +854,8 @@ def previsualizar(main_bytes: bytes) -> dict:
     indicadores = 0
     cursos = 0
     cursos_afectados = 0
+    filas_sin_id: list[dict] = []
+    mismo_texto: list[dict] = []
     conflictos: list[dict] = []
     conflictos_cursos: list[dict] = []
     if "T1" in hojas:
@@ -762,6 +877,15 @@ def previsualizar(main_bytes: bytes) -> dict:
                 i for i in (id_indicador_a_str(v) for v in df_t2[COL_ID_INDICADOR]) if i
             })
         analisis = analizar_indicadores(df_t2)
+        filas_sin_id = [
+            {k: fs[k] for k in ("fila", "catalogo", "programa")} for fs in filas_sin_id_indicador(df_t2)
+        ]
+        mismo_texto = [
+            {"ids": g["ids"], "descripcion": g["descripcion"], "cursos": g["cursos"],
+             "rubricaIdentica": g["rubricaIdentica"],
+             "resultadoAprendizajeIdentico": g["resultadoAprendizajeIdentico"]}
+            for g in indicadores_mismo_texto(df_t2, set(analisis))
+        ]
         afectados = cursos_con_indicadores_en_conflicto(df_t2, analisis)
         catalogos_t1 = set()
         if "T1" in hojas:
@@ -786,4 +910,6 @@ def previsualizar(main_bytes: bytes) -> dict:
         "cursos": cursos,
         "conflictosCursos": conflictos_cursos,
         "cursosConIndicadorEnConflicto": cursos_afectados,
+        "filasSinId": filas_sin_id,
+        "indicadoresMismoTexto": mismo_texto,
     }

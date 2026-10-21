@@ -20,6 +20,8 @@ export interface MegamatrizStats {
   t3Errores: number
   t5Errores: number
   totalFilasT1: number
+  filasSinId: number
+  advertencias: number
   cursosUnicosT1: number
   cursosOmitidos: number
   indicadoresOmitidos: number
@@ -36,6 +38,7 @@ export interface MegamatrizAudit {
 export interface MegamatrizResult {
   resultado: { status: boolean; data: Record<string, unknown> }
   errores: ProcessingError[]
+  advertencias: ProcessingError[]
   stats: MegamatrizStats
   audit: MegamatrizAudit
 }
@@ -97,6 +100,20 @@ export interface CourseConflict {
   filas: number[]
 }
 
+export interface MissingIdRow {
+  fila: number
+  catalogo: string
+  programa: string
+}
+
+export interface SameTextIndicators {
+  ids: string[]
+  descripcion: string
+  cursos: string[]
+  rubricaIdentica: boolean
+  resultadoAprendizajeIdentico: boolean
+}
+
 export interface FilePreview {
   hojas: string[]
   faltantes: string[]
@@ -106,6 +123,8 @@ export interface FilePreview {
   cursos: number
   conflictosCursos: CourseConflict[]
   cursosConIndicadorEnConflicto: number
+  filasSinId: MissingIdRow[]
+  indicadoresMismoTexto: SameTextIndicators[]
 }
 
 export async function previewFile(mainFile: File): Promise<FilePreview> {

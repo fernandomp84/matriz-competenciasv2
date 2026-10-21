@@ -94,6 +94,10 @@ def reporte_inconsistencias(main: bytes, path: str) -> int:
 
 
 def tipo_error(e: dict) -> str:
+    if e["error"].startswith("Fila sin ID Indicador"):
+        return "Fila omitida — sin ID Indicador"
+    if e["error"].startswith("Mismo indicador de desempeño con IDs distintos"):
+        return "Advertencia — mismo texto con IDs distintos"
     if "usa indicadores" in e["error"]:
         return "Curso omitido — usa indicadores en conflicto"
     if "datos distintos entre programas" in e["error"]:
@@ -105,9 +109,34 @@ def tipo_error(e: dict) -> str:
     return f"Otro ({e['hoja']})"
 
 
-def reporte_errores(r: dict, m: dict, archivo: str, path: str) -> Counter:
+def detalle_validaciones(main: bytes) -> tuple[list[dict], list[dict]]:
+    """Detalle para las hojas 'Filas sin ID' y 'Mismo texto - IDs distintos'."""
+    sheets = mm.leer_hojas(main)
+    hojas, _ = mm.resolver_hojas(sheets)
+    t2 = mm.quitar_encabezados_repetidos(sheets[hojas["T2"]])
+    sin_id = [{"Fila Excel (T_2)": f["fila"], "Número de catálogo": f["catalogo"],
+               "Programa (Source.Name)": f["programa"], "Nivel de logro": f["nivel"],
+               "Cód de Tributación": f["codTributacion"], "Indicador de desempeño": f["descripcion"]}
+              for f in mm.filas_sin_id_indicador(t2)]
+    mismo = []
+    for g in mm.indicadores_mismo_texto(t2, set(mm.analizar_indicadores(t2))):
+        for i in g["ids"]:
+            d = g["detalle"][i]
+            mismo.append({
+                "Indicador de desempeño": g["descripcion"], "ID Indicador": i,
+                "Filas T_2": ", ".join(map(str, d["filas"])), "Cursos": ", ".join(d["cursos"]),
+                "Programas (Source.Name)": ", ".join(d["programas"]),
+                "Resultado de aprendizaje": " | ".join(d["ras"]),
+                "¿Rúbrica idéntica entre los IDs?": "Sí" if g["rubricaIdentica"] else "No",
+                "¿Resultado de aprendizaje idéntico?": "Sí" if g["resultadoAprendizajeIdentico"] else "No",
+            })
+    return sin_id, mismo
+
+
+def reporte_errores(r: dict, m: dict, archivo: str, path: str, detalle: tuple) -> Counter:
+    sin_id, mismo = detalle
     filas = [{"Tipo": tipo_error(e), "Hoja": e["hoja"], "Fila Excel": e["fila"], "Detalle": e["error"]}
-             for e in r["errores"]]
+             for e in r["errores"] + r["advertencias"]]
     tipos = Counter(f["Tipo"] for f in filas)
     st = r["stats"]
     resumen = [{"Tipo": f"Archivo: {archivo}", "Cantidad": None}]
@@ -125,7 +154,16 @@ def reporte_errores(r: dict, m: dict, archivo: str, path: str) -> Counter:
          .sort_values(["Hoja", "Fila Excel"]).to_excel(w, sheet_name="Errores", index=False))
         if m["errores"]:
             pd.DataFrame(m["errores"]).to_excel(w, sheet_name="Errores matriz", index=False)
-    formatear(path, {"Resumen": [55, 12], "Errores": [48, 8, 11, 120]})
+        if sin_id:
+            pd.DataFrame(sin_id).to_excel(w, sheet_name="Filas sin ID", index=False)
+        if mismo:
+            pd.DataFrame(mismo).to_excel(w, sheet_name="Mismo texto - IDs distintos", index=False)
+    anchos = {"Resumen": [55, 12], "Errores": [48, 8, 11, 120]}
+    if sin_id:
+        anchos["Filas sin ID"] = [14, 16, 22, 14, 36, 90]
+    if mismo:
+        anchos["Mismo texto - IDs distintos"] = [60, 14, 24, 16, 30, 60, 16, 16]
+    formatear(path, anchos)
     return tipos
 
 
@@ -146,13 +184,14 @@ def main() -> None:
     with open(os.path.join(SALIDA, "Matriz_Competencias.csv"), "w", encoding="utf-8-sig", newline="") as f:
         f.write(m["csvContent"])
     n_inc = reporte_inconsistencias(datos, os.path.join(SALIDA, "Inconsistencias_ID_Indicador.xlsx"))
-    tipos = reporte_errores(r, m, archivo, os.path.join(SALIDA, "Errores_Megamatriz.xlsx"))
+    tipos = reporte_errores(r, m, archivo, os.path.join(SALIDA, "Errores_Megamatriz.xlsx"),
+                            detalle_validaciones(datos))
 
     st = r["stats"]
     print(f"Archivo: {archivo}")
     print(f"Cursos únicos: {st['cursosUnicosT1']} | procesados: {st['procesados']} | omitidos: {st['cursosOmitidos']}")
     print(f"Indicadores en conflicto: {n_inc} | indicadores en la matriz: {m['stats']['totalFilas']}")
-    print("Errores:", dict(tipos))
+    print("Errores y advertencias:", dict(tipos))
     print("Archivos generados en", SALIDA)
 
 

@@ -701,9 +701,13 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
             "error": (
                 f"Fila sin ID Indicador (curso {fs['catalogo'] or '(vacío)'}, programa "
                 f"{fs['programa'] or '(vacío)'}, nivel {fs['nivel'] or '(vacío)'}): "
-                f"'{fs['descripcion'][:70]}' — fila omitida"
+                f"'{fs['descripcion'][:70]}' — llenar el ID Indicador"
             ),
         })
+    # Cursos con alguna fila sin ID: tampoco se procesan hasta que las llenen
+    cursos_sin_id: dict[str, list[int]] = {}
+    for fs in filas_sin_id:
+        cursos_sin_id.setdefault(fs["catalogo"], []).append(fs["fila"])
 
     # Advertencia (no omite nada): mismo texto de indicador con IDs distintos
     advertencias: list[dict] = []
@@ -753,6 +757,7 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
             cursos_omitidos.add(id_siga)
             continue
 
+        omitir = False
         if catalogo in cursos_afectados:
             errores.append({
                 "hoja": hojas["T1"], "fila": fila_num,
@@ -761,6 +766,17 @@ def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xls
                     f"({', '.join(sorted(cursos_afectados[catalogo]))}) — curso omitido"
                 ),
             })
+            omitir = True
+        if catalogo in cursos_sin_id:
+            errores.append({
+                "hoja": hojas["T1"], "fila": fila_num,
+                "error": (
+                    f"Curso {id_siga} ({catalogo}): tiene filas de T_2 sin ID Indicador "
+                    f"(filas {_listar_filas(cursos_sin_id[catalogo])}) — curso omitido hasta llenar los IDs"
+                ),
+            })
+            omitir = True
+        if omitir:
             cursos_omitidos.add(id_siga)
             continue
 

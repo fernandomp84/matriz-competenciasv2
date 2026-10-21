@@ -94,8 +94,10 @@ def reporte_inconsistencias(main: bytes, path: str) -> int:
 
 
 def tipo_error(e: dict) -> str:
+    if "tiene filas de T_2 sin ID Indicador" in e["error"]:
+        return "Curso omitido — tiene filas sin ID Indicador"
     if e["error"].startswith("Fila sin ID Indicador"):
-        return "Fila omitida — sin ID Indicador"
+        return "Detalle — fila sin ID Indicador"
     if e["error"].startswith("Mismo indicador de desempeño con IDs distintos"):
         return "Advertencia — mismo texto con IDs distintos"
     if "usa indicadores" in e["error"]:

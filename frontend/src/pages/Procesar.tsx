@@ -171,9 +171,10 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
           <div className="flex items-start gap-2.5 p-3 bg-red-50 border border-red-200 rounded-xl">
             <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
             <p className="text-xs text-red-800">
-              <strong>{filasSinId.length} fila{filasSinId.length !== 1 ? 's' : ''} de T_2 sin ID Indicador se omitirá{filasSinId.length !== 1 ? 'n' : ''}:</strong>{' '}
-              filas {listarFilas(filasSinId.map((x) => x.fila), 8)} (curso{' '}
-              {Array.from(new Set(filasSinId.map((x) => x.catalogo))).slice(0, 3).join(', ')}). Llena el ID para incluirlas.
+              <strong>{filasSinId.length} fila{filasSinId.length !== 1 ? 's' : ''} de T_2 sin ID Indicador:</strong>{' '}
+              filas {listarFilas(filasSinId.map((x) => x.fila), 8)}. El curso{Array.from(new Set(filasSinId.map((x) => x.catalogo))).length !== 1 ? 's' : ''}{' '}
+              {Array.from(new Set(filasSinId.map((x) => x.catalogo))).slice(0, 3).join(', ')} se omitirá
+              {Array.from(new Set(filasSinId.map((x) => x.catalogo))).length !== 1 ? 'n' : ''} hasta que llenes los IDs.
             </p>
           </div>
         )}

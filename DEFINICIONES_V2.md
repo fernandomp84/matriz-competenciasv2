@@ -43,8 +43,9 @@ La v1 (`matriz-competencias`) sigue funcionando sin cambios con la estructura an
 **Reglas de validación**
 1. **Mismo ID ⇒ misma descripción y misma rúbrica** (Inicial, Progresivo, Avanzado, Excelente) en todo el archivo.
    Si no se cumple, el indicador **se omite** del JSON y de la matriz y se reporta una vez en el archivo de errores (hoja `T_2`).
-1c. **Filas de `T_2` sin `ID Indicador`**: se reportan como **error** (una por fila, con curso, programa y nivel) y la fila se omite.
-   El curso se sigue procesando sin esas competencias. (Definido 2026-10-21.)
+1c. **Filas de `T_2` sin `ID Indicador`**: se reportan como **error** (una por fila, con curso, programa y nivel) y **el curso se omite
+   hasta que se llenen los IDs** (se reporta una vez en `T_1`). Sus indicadores solo salen en la matriz si los usa otro curso procesado.
+   (Definido 2026-10-21; el mismo día se cambió de "omitir solo la fila" a "omitir el curso".)
 1d. **Mismo texto de indicador con IDs distintos** (posible indicador duplicado): se reporta como **advertencia**, sin omitir nada.
    Indica rúbrica idéntica sí/no y resultado de aprendizaje idéntico sí/no. Se excluyen los IDs ya en conflicto (regla 1).
    Es informativo: el equipo académico decide si es el mismo indicador (unificar ID) o dos con el mismo texto (correcto). (Definido 2026-10-21.)

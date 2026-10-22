@@ -1,9 +1,11 @@
+import base64
 import json
 import re
+from datetime import datetime
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from ..services import config_service, matriz_service, megamatriz_service
+from ..services import config_service, matriz_service, megamatriz_service, reporte_service
 
 router = APIRouter(prefix="/process", tags=["processing"])
 
@@ -31,6 +33,17 @@ def _require_equiv() -> bytes:
     return equiv
 
 
+def _procesar_con_reporte(main_bytes: bytes, equiv_bytes: bytes, filename: str) -> tuple[dict, dict]:
+    """Lee el Excel una vez; devuelve (resultado megamatriz con reporteXlsxB64, resultado matriz)."""
+    sheets = megamatriz_service.leer_hojas(main_bytes)
+    mega = megamatriz_service.procesar_hojas(sheets, equiv_bytes, filename)
+    matriz = matriz_service.procesar(mega["resultado"])
+    archivo = f"{filename} ({datetime.now().strftime('%Y-%m-%d %H:%M')})"
+    xlsx = reporte_service.generar_reporte_xlsx(sheets, mega, matriz, archivo)
+    mega["reporteXlsxB64"] = base64.b64encode(xlsx).decode("ascii")
+    return mega, matriz
+
+
 @router.post("/megamatriz")
 async def process_megamatriz(
     main_file: UploadFile = File(..., description="Archivo Excel Megamatriz (.xlsx)"),
@@ -40,7 +53,8 @@ async def process_megamatriz(
     try:
         equiv_bytes = _require_equiv()
         main_bytes = await main_file.read()
-        return megamatriz_service.procesar(main_bytes, equiv_bytes, main_file.filename or "archivo.xlsx")
+        mega, _ = _procesar_con_reporte(main_bytes, equiv_bytes, main_file.filename or "archivo.xlsx")
+        return mega
     except HTTPException:
         raise
     except ValueError as exc:
@@ -75,10 +89,9 @@ async def process_full(
     try:
         equiv_bytes = _require_equiv()
         main_bytes = await main_file.read()
-        mega_result = megamatriz_service.procesar(
+        mega_result, matrix_result = _procesar_con_reporte(
             main_bytes, equiv_bytes, main_file.filename or "archivo.xlsx"
         )
-        matrix_result = matriz_service.procesar(mega_result["resultado"])
         return {"megamatriz": mega_result, "matrix": matrix_result}
     except HTTPException:
         raise

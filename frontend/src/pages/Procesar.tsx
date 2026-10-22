@@ -11,7 +11,7 @@ import StatsCard from '../components/StatsCard'
 import { useToast } from '../hooks/useToast'
 import {
   checkEquivStatus, downloadBase64File, downloadCSV,
-  downloadErrorsCSV, downloadJSON, previewFile, processMegamatriz,
+  downloadJSON, previewFile, processMegamatriz,
   processMatrixFromData, updateEquivalencias,
   type EquivStatus, type FilePreview, type MatrixResult, type MegamatrizResult,
 } from '../services/api'
@@ -638,24 +638,13 @@ export default function Procesar() {
                     <p className="text-xs text-slate-400 font-normal mt-0.5">{megaResult.stats.procesados} cursos estructurados</p>
                   </div>
                 </button>
-                {megaResult.errores.length > 0 && (
-                  <button onClick={() => { downloadErrorsCSV(megaResult.errores, 'errores_megamatriz.csv'); toast('Descargado', { type: 'success' }) }} className="btn-secondary justify-start gap-3 py-3.5">
-                    <Download className="w-4 h-4 shrink-0" />
-                    <div className="text-left">
-                      <p className="font-bold">errores_megamatriz.csv</p>
-                      <p className="text-xs text-slate-400 font-normal mt-0.5">{megaResult.errores.length} errores de validación</p>
-                    </div>
-                  </button>
-                )}
-                {matrixResult.errores.length > 0 && (
-                  <button onClick={() => { downloadBase64File(matrixResult.erroresXlsxB64, 'errorM.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); toast('Descargado', { type: 'success' }) }} className="btn-secondary justify-start gap-3 py-3.5">
-                    <Download className="w-4 h-4 shrink-0" />
-                    <div className="text-left">
-                      <p className="font-bold">errorM.xlsx</p>
-                      <p className="text-xs text-slate-400 font-normal mt-0.5">{matrixResult.errores.length} errores de matriz</p>
-                    </div>
-                  </button>
-                )}
+                <button onClick={() => { downloadBase64File(megaResult.reporteXlsxB64, 'Errores_Megamatriz.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); toast('Reporte descargado', { type: 'success' }) }} className="btn-secondary justify-start gap-3 py-3.5">
+                  <Download className="w-4 h-4 shrink-0" />
+                  <div className="text-left">
+                    <p className="font-bold">Errores_Megamatriz.xlsx</p>
+                    <p className="text-xs text-slate-400 font-normal mt-0.5">{megaResult.errores.length} errores · {(megaResult.advertencias ?? []).length} advertencias</p>
+                  </div>
+                </button>
               </div>
             </div>
           </motion.div>

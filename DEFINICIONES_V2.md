@@ -92,13 +92,27 @@ Todos los textos de salida (JSON y CSV) se limpian de caracteres invisibles: esp
 se convierten en espacio normal y los de anchura cero (U+200B, U+200C, U+200D, U+FEFF) se eliminan; saltos de línea → espacio;
 espacios dobles → uno. Con el Omnia actual: 1.041 caracteres invisibles en el Excel → 0 en la salida.
 
-## Generar los archivos en local
+## Archivos de salida (aplicación y script local generan lo mismo)
+
+| Archivo | Contenido |
+|---|---|
+| `salida.json` | Cursos procesados |
+| `Matriz_Competencias.csv` | `Short Code`;`Description` |
+| `Errores_Megamatriz.xlsx` | Reporte único (generado por `backend/services/reporte_service.py`) |
+
+`Errores_Megamatriz.xlsx` (definido 2026-10-22; reemplaza a `Inconsistencias_ID_Indicador.xlsx`, `errores_megamatriz.csv` y `errorM.xlsx`):
+- **Resumen** por secciones: ARCHIVO · RESULTADO (cursos únicos, procesados, omitidos, indicadores en la matriz) ·
+  ERRORES (cursos omitidos por causa e indicadores en conflicto) · ADVERTENCIAS (no omiten nada) · CONTROL (filas leídas en `T_1`).
+  "Errores al generar la matriz" solo aparece si es > 0. La columna "Ver hoja" solo se llena cuando hay algo que revisar.
+- **Errores**: todos los errores y advertencias con hoja y fila del Excel.
+- Hojas de detalle (solo si aplican): **Indicadores en conflicto** (cada versión del texto), **Filas sin ID**,
+  **Mismo texto - IDs distintos**, **Errores matriz**.
+
+En local:
 
 ```
-python scripts/generar_salidas.py "Entrada/Omnia2.xlsx"
+python scripts/generar_salidas.py "Entrada/Omnia 4.xlsx" [--salida <carpeta>]
 ```
-
-Genera en `Salida/`: `salida.json`, `Matriz_Competencias.csv`, `Inconsistencias_ID_Indicador.xlsx` y `Errores_Megamatriz.xlsx`.
 
 ## Pendientes (dependen de terceros)
 

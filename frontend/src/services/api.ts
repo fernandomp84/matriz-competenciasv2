@@ -41,6 +41,7 @@ export interface MegamatrizResult {
   advertencias: ProcessingError[]
   stats: MegamatrizStats
   audit: MegamatrizAudit
+  reporteXlsxB64: string
 }
 
 export interface MatrixRow {

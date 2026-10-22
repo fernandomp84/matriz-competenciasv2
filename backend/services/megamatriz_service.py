@@ -655,9 +655,13 @@ def construir_registro(fila, df_t2, df_t3, df_t5, mapa_tipo_registro, dept_nombr
 # ── Servicio principal ──────────────────────────────────────────────────────────
 
 def procesar(main_bytes: bytes, equiv_bytes: bytes, filename: str = "archivo.xlsx") -> dict:
+    """Lee el Excel y lo procesa. Para no leerlo dos veces usar leer_hojas + procesar_hojas."""
+    return procesar_hojas(leer_hojas(main_bytes), equiv_bytes, filename)
+
+
+def procesar_hojas(sheets: dict, equiv_bytes: bytes, filename: str = "archivo.xlsx") -> dict:
     t_inicio = time.perf_counter()
 
-    sheets = leer_hojas(main_bytes)
     hojas, faltantes = resolver_hojas(sheets)
     if faltantes:
         raise ValueError(

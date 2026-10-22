@@ -126,6 +126,8 @@ export interface FilePreview {
   cursosConIndicadorEnConflicto: number
   filasSinId: MissingIdRow[]
   indicadoresMismoTexto: SameTextIndicators[]
+  megamatriz: MegamatrizResult | null
+  matrix: MatrixResult | null
 }
 
 export async function previewFile(mainFile: File): Promise<FilePreview> {

@@ -14,10 +14,22 @@ router = APIRouter(prefix="/process", tags=["processing"])
 async def preview(
     main_file: UploadFile = File(..., description="Archivo Excel Omnia (.xlsx)"),
 ):
-    """Revisa hojas, filas e indicadores en conflicto antes de procesar."""
+    """Análisis completo previo: revisión + resultados + reporte de errores (sin procesar dos veces)."""
     try:
+        equiv_bytes = _require_equiv()
         main_bytes = await main_file.read()
-        return megamatriz_service.previsualizar(main_bytes)
+        sheets = megamatriz_service.leer_hojas(main_bytes)
+        prev = megamatriz_service.previsualizar_hojas(sheets)
+        if prev["faltantes"]:
+            return {**prev, "megamatriz": None, "matrix": None}
+        mega, matriz = _procesar_hojas_con_reporte(
+            sheets, equiv_bytes, main_file.filename or "archivo.xlsx"
+        )
+        return {**prev, "megamatriz": mega, "matrix": matriz}
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     except Exception as exc:
         raise HTTPException(500, f"Error al leer el archivo: {exc}") from exc
 
@@ -36,6 +48,11 @@ def _require_equiv() -> bytes:
 def _procesar_con_reporte(main_bytes: bytes, equiv_bytes: bytes, filename: str) -> tuple[dict, dict]:
     """Lee el Excel una vez; devuelve (resultado megamatriz con reporteXlsxB64, resultado matriz)."""
     sheets = megamatriz_service.leer_hojas(main_bytes)
+    return _procesar_hojas_con_reporte(sheets, equiv_bytes, filename)
+
+
+def _procesar_hojas_con_reporte(sheets: dict, equiv_bytes: bytes, filename: str) -> tuple[dict, dict]:
+    """Igual que _procesar_con_reporte sobre hojas ya leídas."""
     mega = megamatriz_service.procesar_hojas(sheets, equiv_bytes, filename)
     matriz = matriz_service.procesar(mega["resultado"])
     archivo = f"{filename} ({datetime.now().strftime('%Y-%m-%d %H:%M')})"

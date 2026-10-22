@@ -120,6 +120,8 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
   const filasSinId = preview.filasSinId
   const mismoTexto = preview.indicadoresMismoTexto
   const hayConflictos = conflictos.length > 0 || conflictosCursos.length > 0 || filasSinId.length > 0
+  const megaPreview = preview.megamatriz
+  const { toast } = useToast()
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card overflow-hidden">
@@ -264,16 +266,30 @@ function FilePreviewPanel({ preview, onConfirm, onReset }: {
       )}
 
       {/* Acciones */}
-      <div className="px-6 py-4 border-t border-brand-100 flex items-center justify-between bg-slate-50/50">
+      <div className="px-6 py-4 border-t border-brand-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
         <p className="text-xs text-slate-500">
           {!ok ? 'Corrige el archivo y vuelve a cargarlo.'
-            : hayConflictos ? 'Puedes procesar ahora; los cursos e indicadores en conflicto quedarán en el reporte de errores.'
+            : hayConflictos ? 'Descarga el reporte para corregir el Omnia, o procesa ahora: los cursos e indicadores con errores quedarán por fuera.'
             : 'Todo listo para procesar.'}
         </p>
-        <button onClick={onConfirm} disabled={!ok} className="btn-primary">
-          <CheckCircle2 className="w-4 h-4" />
-          Confirmar y procesar
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {megaPreview && (
+            <button
+              onClick={() => {
+                downloadBase64File(megaPreview.reporteXlsxB64, 'Errores_Megamatriz.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                toast('Reporte descargado', { type: 'success' })
+              }}
+              className="btn-secondary"
+            >
+              <Download className="w-4 h-4" />
+              Descargar Errores_Megamatriz.xlsx
+            </button>
+          )}
+          <button onClick={onConfirm} disabled={!ok} className="btn-primary">
+            <CheckCircle2 className="w-4 h-4" />
+            Confirmar y procesar
+          </button>
+        </div>
       </div>
     </motion.div>
   )
@@ -400,8 +416,25 @@ export default function Procesar() {
     setApiError(null)
     setMegaResult(null)
     setMatrixResult(null)
-    setPhase('processing')
 
+    // Reutiliza el resultado de la verificación si ya viene completo
+    const megaPrev = filePreview?.megamatriz
+    const matrixPrev = filePreview?.matrix
+    if (megaPrev && matrixPrev) {
+      setMegaResult(megaPrev)
+      setMatrixResult(matrixPrev)
+      setSteps({ mega: 'done', matrix: 'done' })
+      setPhase('done')
+      saveToHistory('megamatriz', mainFile.name, megaPrev.stats as unknown as Record<string, number>)
+      saveToHistory('matrix', 'salida.json', matrixPrev.stats as unknown as Record<string, number>)
+      toast('Procesamiento completado', {
+        type: 'success',
+        message: `${megaPrev.stats.procesados} cursos · ${matrixPrev.stats.totalFilas} filas en matriz`,
+      })
+      return
+    }
+
+    setPhase('processing')
     setSteps({ mega: 'running', matrix: 'idle' })
     try {
       const mega = await processMegamatriz(mainFile)
@@ -489,15 +522,20 @@ export default function Procesar() {
                   : !mainFile ? 'Selecciona el archivo Excel'
                   : 'Primero se verificará la estructura del archivo'}
               </p>
-              <button
-                onClick={handleVerify}
-                disabled={!mainFile || !equivStatus.configured || phase === 'verifying'}
-                className="btn-primary"
-              >
-                {phase === 'verifying'
-                  ? <><Loader2 className="w-4 h-4 animate-spin" />Leyendo archivo…</>
-                  : <><Eye className="w-4 h-4" />Verificar archivo</>}
-              </button>
+              <div className="flex flex-col items-end gap-1">
+                <button
+                  onClick={handleVerify}
+                  disabled={!mainFile || !equivStatus.configured || phase === 'verifying'}
+                  className="btn-primary"
+                >
+                  {phase === 'verifying'
+                    ? <><Loader2 className="w-4 h-4 animate-spin" />Analizando archivo…</>
+                    : <><Eye className="w-4 h-4" />Verificar archivo</>}
+                </button>
+                {phase === 'verifying' && (
+                  <p className="text-xs text-slate-400">El análisis completo puede tardar hasta un minuto.</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

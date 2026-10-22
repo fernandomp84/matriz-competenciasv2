@@ -868,7 +868,11 @@ def procesar_hojas(sheets: dict, equiv_bytes: bytes, filename: str = "archivo.xl
 
 def previsualizar(main_bytes: bytes) -> dict:
     """Revisión rápida del archivo antes de procesar: hojas, filas e indicadores en conflicto."""
-    sheets = leer_hojas(main_bytes)
+    return previsualizar_hojas(leer_hojas(main_bytes))
+
+
+def previsualizar_hojas(sheets: dict) -> dict:
+    """Igual que previsualizar pero sobre hojas ya leídas (evita leer el Excel dos veces)."""
     hojas, faltantes = resolver_hojas(sheets)
     filas = {nombre: len(quitar_encabezados_repetidos(sheets[nombre])) for nombre in hojas.values()}
     indicadores = 0

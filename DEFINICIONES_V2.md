@@ -108,6 +108,10 @@ espacios dobles → uno. Con el Omnia actual: 1.041 caracteres invisibles en el 
 - Hojas de detalle (solo si aplican): **Indicadores en conflicto** (cada versión del texto), **Filas sin ID**,
   **Mismo texto - IDs distintos**, **Errores matriz**.
 
+En la aplicación (definido 2026-10-22): **"Verificar archivo" hace el análisis completo** (el mismo del procesamiento) y permite
+**descargar `Errores_Megamatriz.xlsx` antes de procesar**, para corregir el Omnia. "Confirmar y procesar" reutiliza ese resultado
+(no vuelve a procesar). La verificación requiere la Tabla de equivalencias configurada y tarda ~30–40 s en el servidor gratuito.
+
 En local:
 
 ```

@@ -21,9 +21,11 @@ cd matriz-competenciasv2
 
 **Opción A: Terminal 1 - Backend**
 
+> En Windows basta con ejecutar `start_backend.bat`. El backend se arranca **desde la raíz del proyecto**
+> (`backend.main:app`), porque usa imports relativos; `cd backend` + `uvicorn main:app` no funciona.
+
 ```bash
-# Navegar a carpeta backend
-cd backend
+# Desde la raíz del proyecto
 
 # Crear ambiente virtual (opcional pero recomendado)
 python -m venv venv
@@ -35,10 +37,10 @@ venv\Scripts\activate
 source venv/bin/activate
 
 # Instalar dependencias
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 
 # Ejecutar servidor FastAPI
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 **El backend estará disponible en:**
@@ -149,15 +151,18 @@ npm --version
 ### Error: "Puerto 8000 ya está en uso"
 ```bash
 # Usa otro puerto:
-uvicorn main:app --reload --host 0.0.0.0 --port 8001
-# Luego actualiza el frontend en src/services/api.ts
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8001
+# Luego cambia el target del proxy en frontend/vite.config.ts a http://localhost:8001
 ```
 
 ### Error: "Módulos no encontrados en backend"
 ```bash
-# Reinstala dependencias:
-pip install --upgrade -r requirements.txt
+# Reinstala dependencias (desde la raíz):
+pip install --upgrade -r backend/requirements.txt
 ```
+
+### Error: "attempted relative import with no known parent package"
+El backend se arrancó desde la carpeta `backend`. Arráncalo desde la raíz con `uvicorn backend.main:app`.
 
 ## 📱 Acceder desde Otra Computadora en la Red
 
@@ -169,9 +174,9 @@ Si quieres acceder a la aplicación desde otra computadora en tu red local:
    ifconfig  # Mac/Linux
    ```
 
-2. **Actualiza el backend URL en frontend** (`src/services/api.ts`):
-   ```typescript
-   const baseURL = 'http://TU_IP_LOCAL:8000/api'
+2. **Arranca el frontend escuchando en la red** (el proxy de Vite sigue enviando `/api` al backend local):
+   ```bash
+   npm run dev -- --host
    ```
 
 3. **Accede desde otra computadora:**
@@ -187,7 +192,7 @@ git pull origin main
 
 # Actualizar dependencias si cambiaron
 cd frontend && npm install
-cd ../backend && pip install -r requirements.txt
+cd .. && pip install -r backend/requirements.txt
 ```
 
 ## 📊 Monitoreo Local

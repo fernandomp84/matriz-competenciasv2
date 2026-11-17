@@ -9,8 +9,11 @@ logger = logging.getLogger(__name__)
 
 # Ruta guardada (sobrevive reinicios)
 _SAVED_PATH = Path(__file__).parent.parent / "data" / "equivalencias.xlsx"
-# Ruta por defecto del proyecto original
+# Ruta por defecto del proyecto original (solo existe en local: *.xlsx no se versiona)
 _DEFAULT_PATH = Path(__file__).parent.parent.parent / "Entrada" / "Tabla de equivalencias.xlsx"
+# Copia versionada en el repo: en Render el disco se borra en cada reinicio, así que sin
+# esta copia el servidor público arrancaría sin equivalencias tras cada "despertar".
+_BUNDLED_PATH = Path(__file__).parent.parent / "equivalencias_default.xlsx"
 
 _equiv_bytes: bytes | None = None
 
@@ -27,7 +30,7 @@ def load_default() -> bool:
     """Carga las equivalencias al arrancar el servidor."""
     global _equiv_bytes
 
-    for path in [_SAVED_PATH, _DEFAULT_PATH]:
+    for path in [_SAVED_PATH, _DEFAULT_PATH, _BUNDLED_PATH]:
         if path.exists():
             try:
                 _equiv_bytes = path.read_bytes()

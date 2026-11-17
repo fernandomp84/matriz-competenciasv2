@@ -67,8 +67,12 @@ export interface EquivStatus {
   message: string
 }
 
+// Local (npm run dev): '/api' → proxy de Vite a http://localhost:8000 (vite.config.ts).
+// Producción (Vercel): VITE_API_URL de .env.production → backend en Render.
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://matriz-competenciasv2.onrender.com/api',
+  baseURL:
+    import.meta.env.VITE_API_URL ||
+    (import.meta.env.DEV ? '/api' : 'https://matriz-competenciasv2.onrender.com/api'),
   timeout: 180_000,
 })
 

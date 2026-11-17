@@ -29,33 +29,33 @@ Aplicación full-stack para procesar la Megamatriz de Electivas de la Universida
 
 ## 🛠️ Desarrollo Local
 
-### Backend
+### Backend (desde la raíz del proyecto, o `start_backend.bat`)
 ```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
+pip install -r backend/requirements.txt
+uvicorn backend.main:app --reload --port 8000
 ```
 
-### Frontend
+### Frontend (o `start_frontend.bat`)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-El frontend estará disponible en `http://localhost:5173`
+El frontend estará disponible en `http://localhost:5173` y usa el backend local
+(`/api` → `http://localhost:8000` vía el proxy de Vite).
 
 ## 📦 Deployment
 
-### Frontend (Vercel)
-1. Conectar repositorio a Vercel
+### Frontend (Vercel) — https://matriz-competenciasv2.vercel.app
+1. Root Directory: `frontend`
 2. Build command: `npm run build`
 3. Output directory: `dist`
+4. La URL del backend se toma de `frontend/.env.production` (`VITE_API_URL`).
 
-### Backend (Railway)
-1. Conectar repositorio a Railway
-2. Select Python service
-3. Start command: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
+### Backend (Render) — https://matriz-competenciasv2.onrender.com
+1. Build command: `pip install -r backend/requirements.txt`
+2. Start command: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
 
 ## 📝 Licencia
 

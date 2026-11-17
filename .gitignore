@@ -48,6 +48,10 @@ Thumbs.db
 Salida/
 *.xlsx
 *.csv
+# Tabla de equivalencias por defecto que carga el backend (necesaria en Render)
+!backend/equivalencias_default.xlsx
+# Tabla subida desde la UI (local)
+backend/data/
 
 # Logs
 *.log
